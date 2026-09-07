@@ -404,6 +404,11 @@ app.post("/api/messages", asyncRoute(async (req, res) => {
     if (reqRow.creatorId && reqRow.creatorId !== d.senderId) recipients.add(reqRow.creatorId);
     participantes.forEach((p) => { if (p.id !== d.senderId) recipients.add(p.id); });
     recipients.forEach((pid) => {
+      run(
+        `INSERT INTO activity (id, forUserId, type, requestId, actorName, requestLugar, requestFecha, requestHora, timestamp)
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [uid(), pid, "chat", reqRow.id, d.senderName || "", reqRow.lugar, reqRow.fecha, reqRow.hora, Date.now()]
+      ).catch(() => {});
       sendPushToPlayer(pid, { title: d.senderName || "Nuevo mensaje", body: text, url: "/" }).catch(() => {});
     });
   }
@@ -558,6 +563,21 @@ app.delete("/api/admin/clubs/:id", superAuth, asyncRoute(async (req, res) => {
       { sql: "DELETE FROM torneos WHERE clubId=?", args: [id] },
       { sql: "DELETE FROM reservas WHERE clubId=?", args: [id] },
       { sql: "DELETE FROM clubFollows WHERE clubId=?", args: [id] },
+    ],
+    "write"
+  );
+  res.json({ ok: true });
+}));
+
+app.delete("/api/admin/players/:id", superAuth, asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  await db.batch(
+    [
+      { sql: "DELETE FROM players WHERE id=?", args: [id] },
+      { sql: "DELETE FROM friends WHERE owner=? OR friendId=?", args: [id, id] },
+      { sql: "DELETE FROM activity WHERE forUserId=?", args: [id] },
+      { sql: "DELETE FROM pushSubscriptions WHERE playerId=?", args: [id] },
+      { sql: "UPDATE requests SET estado='cancelado' WHERE creatorId=?", args: [id] },
     ],
     "write"
   );

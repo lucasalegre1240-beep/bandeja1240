@@ -1341,13 +1341,6 @@ function renderBuscar(prof){
   var listHtml = open.length ? open.map(function(r){ return requestCard(r, prof); }).join("") :
     '<div class="empty">'+icons.ball+'<p>No hay partidos abiertos'+(filterMine?" para tu perfil":"")+' todavía.<br>Sé el primero en publicar uno.</p></div>';
 
-  var sortedCanchas = freeSlots(canchas, reservas).sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
-  var canchasHtml = showForm ? "" :
-    '<p class="subhead">Canchas libres</p>'+
-    '<p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px;">Calculadas solas a partir del horario de cada club, descontando lo ya reservado. Tocá el nombre para ver el club, o "Reservar" para mandar la solicitud directo.</p>'+
-    (sortedCanchas.length ? sortedCanchas.map(function(c){ return canchaRowHtml(c, '<button type="button" class="btn btn-primary" data-reservecancha="'+c.id+'">Reservar</button>'); }).join("") :
-      '<div class="empty" style="padding:20px 10px;"><p>Ningún club cargó horarios de cancha todavía.</p></div>');
-
   var sortedNoticias = noticias.slice().sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
   var noticiasHtml = showForm ? "" :
     '<p class="subhead">Noticias de los clubes</p>'+
@@ -1364,7 +1357,6 @@ function renderBuscar(prof){
     '<p class="subhead">Partidos abiertos</p>'+
     '<div class="chiprow"><button class="chip'+(!filterMine?" active":"")+'" data-f="all">Todos</button><button class="chip'+(filterMine?" active":"")+'" data-f="mine">Para tu categoría</button></div>'+
     listHtml+
-    canchasHtml+
     noticiasHtml;
 
   bindShared(prof);
@@ -1394,16 +1386,36 @@ function renderBuscar(prof){
   });
 }
 
+var filterCanchasZona = false;
+function renderCanchas(prof){
+  var all = freeSlots(canchas, reservas).sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
+  var sorted = filterCanchasZona && prof.zona ? all.filter(function(c){ return c.zona===prof.zona; }) : all;
+
+  var html =
+    '<h2 class="section-title">Canchas</h2>'+
+    '<p class="section-sub">Horarios libres calculados solos a partir del horario de apertura y cierre que carga cada club, descontando lo ya reservado.</p>'+
+    '<div class="chiprow"><button class="chip'+(!filterCanchasZona?" active":"")+'" data-fz="all">Todas</button><button class="chip'+(filterCanchasZona?" active":"")+'" data-fz="mine">Cerca mío</button></div>'+
+    (sorted.length ? sorted.map(function(c){ return canchaRowHtml(c, '<button type="button" class="btn btn-primary" data-reservecancha="'+c.id+'">Reservar</button>'); }).join("") :
+      '<div class="empty">'+icons.court+'<p>'+(filterCanchasZona?"Ningún club de tu zona cargó horarios todavía.":"Ningún club cargó horarios de cancha todavía.")+'</p></div>');
+
+  appEl.querySelector(".content").innerHTML = html;
+  bindShared(prof);
+  document.querySelectorAll("[data-fz]").forEach(function(b){ b.addEventListener("click", function(){ filterCanchasZona = b.getAttribute("data-fz")==="mine"; renderCanchas(prof); }); });
+}
+
 function renderNotif(prof){
   var mine = activity.filter(function(a){ return a.forUserId===prof.id; });
   var lastSeen = getLastSeen();
   var html = mine.length ? mine.map(function(a){
     var text, icon;
     if(a.type==="join"){ text = '<b>'+a.actorName.split(",")[0]+'</b> se sumó a tu partido en '+a.requestLugar; icon = icons.handshake; }
+    else if(a.type==="chat"){ text = '<b>'+a.actorName.split(",")[0]+'</b> te escribió en el chat de '+a.requestLugar; icon = icons.chat; }
     else if(a.type==="reserva"){ text = a.estado==="confirmada" ? '<b>'+a.actorName+'</b> confirmó tu reserva en '+a.requestLugar : '<b>'+a.actorName+'</b> no pudo confirmar tu reserva en '+a.requestLugar; icon = icons.court; }
     else { text = 'Nuevo partido para vos en <b>'+a.requestLugar+'</b> ('+a.actorName.split(",")[0]+')'; icon = icons.ball; }
-    return '<div class="activity-item"><div class="aicon">'+icon+'</div><div class="abody"><div class="atext">'+text+'</div><div class="atime">'+fmtDateSafe(a.requestFecha)+' '+a.requestHora+' · hace '+timeAgo(a.timestamp)+'</div></div></div>';
-  }).join("") : '<div class="empty">'+icons.bell+'<p>Todavía no tenés novedades.<br>Cuando alguien se sume a tu partido, te confirmen una reserva o aparezca uno a tu nivel, lo vas a ver acá.</p></div>';
+    var clickable = (a.type==="join"||a.type==="chat") && a.requestId;
+    var tag = clickable ? 'button type="button" data-openchat="'+a.requestId+'"' : 'div';
+    return '<'+tag+' class="activity-item" style="width:100%;text-align:left;background:none;border:none;font:inherit;color:inherit;'+(clickable?"cursor:pointer;":"")+'"><div class="aicon">'+icon+'</div><div class="abody"><div class="atext">'+text+'</div><div class="atime">'+fmtDateSafe(a.requestFecha)+' '+a.requestHora+' · hace '+timeAgo(a.timestamp)+'</div></div></'+(clickable?"button":"div")+'>';
+  }).join("") : '<div class="empty">'+icons.bell+'<p>Todavía no tenés novedades.<br>Cuando alguien se sume a tu partido, te confirmen una reserva, te escriban por el chat o aparezca un partido a tu nivel, lo vas a ver acá.</p></div>';
 
   appEl.querySelector(".content").innerHTML =
     '<h2 class="section-title">Notificaciones</h2>'+
@@ -1754,6 +1766,7 @@ function renderPlayerApp(){
     '<div class="content"></div>'+
     '<div class="tabbar">'+
       tabBtn("buscar", icons.ball, "Buscar")+
+      tabBtn("canchas", icons.court, "Canchas")+
       tabBtn("amigos", icons.friends, "Amigos")+
       tabBtn("notif", icons.bell, "Avisos", notifCount)+
       tabBtn("mios", icons.trophy, "Partidos")+
@@ -1766,6 +1779,7 @@ function renderPlayerApp(){
   document.querySelectorAll(".tab").forEach(function(b){ b.addEventListener("click", function(){ tab=b.getAttribute("data-tab"); showForm=false; viewingProfileId=null; viewingClubId=null; viewingChatRequestId=null; editingProfile=false; render(); }); });
 
   if(tab==="buscar") renderBuscar(prof);
+  else if(tab==="canchas") renderCanchas(prof);
   else if(tab==="amigos") renderAmigos(prof);
   else if(tab==="notif") renderNotif(prof);
   else if(tab==="mios") renderMios(prof);

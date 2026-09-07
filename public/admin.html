@@ -385,6 +385,7 @@ var sessionChecked = false;
 var loginMode = "club";
 var loginError = "";
 var adminClubsCache = null;
+var adminPlayersCache = null;
 var adminSection = "calendario";
 var clubs = [], reservas = [], torneos = [], canchas = [], noticias = [];
 var subsStarted = false;
@@ -460,6 +461,12 @@ function deleteClubAction(clubId){
     .then(function(){ adminClubsCache=null; toast("Club eliminado."); render(); })
     .catch(function(err){ toast(err.message||"No se pudo eliminar."); });
 }
+function deletePlayerAction(playerId, playerName){
+  if(!window.confirm("¿Eliminar a "+(playerName||"este usuario")+"? También se van a borrar sus amistades y su actividad. Esta acción no se puede deshacer.")) return;
+  fetchJSON("/api/admin/players/"+playerId, { method:"DELETE" })
+    .then(function(){ adminPlayersCache=null; toast("Usuario eliminado."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo eliminar."); });
+}
 function sendMembershipAlert(clubId){
   fetchJSON("/api/admin/clubs/"+clubId, { method:"PATCH", body:JSON.stringify({ membershipAlert:true }) })
     .then(function(){ adminClubsCache=null; toast("Aviso de membresía enviado al club."); render(); });
@@ -520,13 +527,14 @@ function renderLogin(){
 
 function renderSuperadmin(){
   var ncPhoto = null;
-  if(adminClubsCache===null){
+  if(adminClubsCache===null || adminPlayersCache===null){
     rootEl.innerHTML =
       '<div class="shell">'+
         '<div class="topbar"><div class="brand"><div class="mark">'+icons.club+'</div><div><div class="name">Bandeja Admin</div></div></div></div>'+
-        '<div class="content"><p class="section-sub">Cargando clubes...</p></div>'+
+        '<div class="content"><p class="section-sub">Cargando...</p></div>'+
       '</div>';
-    fetchJSON("/api/admin/clubs").then(function(data){ adminClubsCache = data; render(); }).catch(function(){ adminClubsCache = []; render(); });
+    if(adminClubsCache===null) fetchJSON("/api/admin/clubs").then(function(data){ adminClubsCache = data; render(); }).catch(function(){ adminClubsCache = []; render(); });
+    if(adminPlayersCache===null) fetchJSON("/api/players").then(function(data){ adminPlayersCache = data; render(); }).catch(function(){ adminPlayersCache = []; render(); });
     return;
   }
 
@@ -573,6 +581,15 @@ function renderSuperadmin(){
     );
   }).join("");
 
+  var playerCards = adminPlayersCache.slice().sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); }).map(function(p){
+    return (
+      '<div class="card" style="display:flex;align-items:center;gap:12px;">'+
+        '<div style="flex:1;min-width:0;"><p class="card-place" style="margin-bottom:2px;">'+p.name+'</p><div class="who-tag">'+(p.category||"Sin categoría")+' · '+(p.zona||"Sin zona")+'</div></div>'+
+        '<button type="button" class="btn btn-danger" data-delplayer="'+p.id+'" data-delplayername="'+String(p.name||"").replace(/"/g,"&quot;")+'">Eliminar</button>'+
+      '</div>'
+    );
+  }).join("");
+
   rootEl.innerHTML =
     '<div class="shell">'+
       '<div class="topbar">'+
@@ -589,10 +606,16 @@ function renderSuperadmin(){
         newClubForm+
         '<p class="subhead">Clubes ('+adminClubsCache.length+')</p>'+
         (adminClubsCache.length ? '<div class="card-grid">'+clubCards+'</div>' : '<div class="empty"><p>Todavía no creaste ningún club.</p></div>')+
+        '<p class="subhead">Usuarios ('+adminPlayersCache.length+')</p>'+
+        '<p class="section-sub" style="margin-top:-8px;">Los jugadores que se van registrando en la app.</p>'+
+        (adminPlayersCache.length ? '<div class="card-grid">'+playerCards+'</div>' : '<div class="empty"><p>Todavía no se registró ningún jugador.</p></div>')+
       '</div>'+
     '</div>';
 
   document.getElementById("sa-logout").addEventListener("click", logout);
+  document.querySelectorAll("[data-delplayer]").forEach(function(b){
+    b.addEventListener("click", function(){ deletePlayerAction(b.getAttribute("data-delplayer"), b.getAttribute("data-delplayername")); });
+  });
   bindAvatarPicker("nc-avatar", function(d){ ncPhoto=d; });
   adminClubsCache.forEach(function(c){ bindAvatarPicker("cav-"+c.id, function(d){ updateClubPhoto(c.id, d); }); });
   document.getElementById("nc-submit").addEventListener("click", function(){
