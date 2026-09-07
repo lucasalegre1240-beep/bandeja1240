@@ -861,6 +861,56 @@ function freeSlots(canchaProfiles, reservasList, clubIdFilter){
   });
   return out;
 }
+function groupSlotsByCourt(slots){
+  var groups = {}, order = [];
+  slots.forEach(function(s){
+    var key = s.clubId+"|"+s.cancha;
+    if(!groups[key]){ groups[key] = { clubId:s.clubId, club:s.club, cancha:s.cancha, zona:s.zona, dates:{} }; order.push(key); }
+    if(!groups[key].dates[s.fecha]) groups[key].dates[s.fecha] = [];
+    groups[key].dates[s.fecha].push(s);
+  });
+  return order.map(function(k){ return groups[k]; });
+}
+function courtGroupHtml(g, idx){
+  var dates = Object.keys(g.dates).sort();
+  var dateOptions = dates.map(function(d){ return '<option value="'+d+'">'+fmtDateSafe(d)+'</option>'; }).join("");
+  var firstSlots = g.dates[dates[0]] || [];
+  var horaOptions = firstSlots.map(function(s){ return '<option value="'+s.id+'">'+s.horaInicio+' - '+s.horaFin+'</option>'; }).join("");
+  return (
+    '<div class="card">'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'+
+        '<div class="icon-box" style="width:36px;height:36px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;">'+icons.court+'</div>'+
+        '<button type="button" class="link-block" data-viewclub="'+(g.clubId||"")+'" style="flex:1;min-width:0;">'+
+          '<div class="who-name" style="font-size:13px;">'+g.club+(g.clubId?verifiedBadge():"")+' · '+g.cancha+'</div>'+
+          '<div class="who-tag">'+g.zona+'</div>'+
+        '</button>'+
+      '</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Día</label><select class="cg-date" data-idx="'+idx+'">'+dateOptions+'</select></div>'+
+        '<div class="field"><label>Horario</label><select class="cg-hora" data-idx="'+idx+'">'+horaOptions+'</select></div>'+
+      '</div>'+
+      '<button type="button" class="btn btn-primary btn-full cg-reservar" data-idx="'+idx+'">Reservar</button>'+
+    '</div>'
+  );
+}
+function bindCourtGroups(groups){
+  document.querySelectorAll(".cg-date").forEach(function(sel){
+    sel.addEventListener("change", function(){
+      var idx = sel.getAttribute("data-idx");
+      var g = groups[idx];
+      var horaSel = document.querySelector('.cg-hora[data-idx="'+idx+'"]');
+      var slots = (g && g.dates[sel.value]) || [];
+      if(horaSel) horaSel.innerHTML = slots.map(function(s){ return '<option value="'+s.id+'">'+s.horaInicio+' - '+s.horaFin+'</option>'; }).join("");
+    });
+  });
+  document.querySelectorAll(".cg-reservar").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var idx = btn.getAttribute("data-idx");
+      var horaSel = document.querySelector('.cg-hora[data-idx="'+idx+'"]');
+      if(horaSel && horaSel.value) reserveCanchaAction(horaSel.value);
+    });
+  });
+}
 function fmtDateSafe(iso){
   if(!iso) return "";
   var d = new Date(iso+"T00:00:00");
@@ -960,18 +1010,6 @@ function clubAvatarHtml(px, iconPx, photo){
 }
 function verifiedBadge(){
   return '<span class="icon-inline" style="width:13px;height:13px;color:var(--blue);vertical-align:-2px;margin-left:3px;flex-shrink:0;" title="Club verificado">'+icons.verified+'</span>';
-}
-function canchaRowHtml(c, actionHtml){
-  return (
-    '<div class="card" style="display:flex;align-items:center;gap:12px;">'+
-      '<div class="icon-box" style="width:36px;height:36px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;">'+icons.court+'</div>'+
-      '<button type="button" class="link-block" data-viewclub="'+(c.clubId||"")+'" style="flex:1;min-width:0;">'+
-        '<div class="who-name" style="font-size:13px;">'+c.club+(c.clubId?verifiedBadge():"")+' · '+c.cancha+'</div>'+
-        '<div class="who-tag">'+fmtDateSafe(c.fecha)+' · '+c.horaInicio+'–'+c.horaFin+' · '+c.zona+'</div>'+
-      '</button>'+
-      actionHtml+
-    '</div>'
-  );
 }
 function noticiaRowHtml(n){
   var ctaLabel = n.tipo==="torneo" ? "Entrar al torneo" : "Reservar cancha";
@@ -1388,18 +1426,20 @@ function renderBuscar(prof){
 
 var filterCanchasZona = false;
 function renderCanchas(prof){
-  var all = freeSlots(canchas, reservas).sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
-  var sorted = filterCanchasZona && prof.zona ? all.filter(function(c){ return c.zona===prof.zona; }) : all;
+  var all = freeSlots(canchas, reservas);
+  var filtered = filterCanchasZona && prof.zona ? all.filter(function(c){ return c.zona===prof.zona; }) : all;
+  var groups = groupSlotsByCourt(filtered);
 
   var html =
     '<h2 class="section-title">Canchas</h2>'+
     '<p class="section-sub">Horarios libres calculados solos a partir del horario de apertura y cierre que carga cada club, descontando lo ya reservado.</p>'+
     '<div class="chiprow"><button class="chip'+(!filterCanchasZona?" active":"")+'" data-fz="all">Todas</button><button class="chip'+(filterCanchasZona?" active":"")+'" data-fz="mine">Cerca mío</button></div>'+
-    (sorted.length ? sorted.map(function(c){ return canchaRowHtml(c, '<button type="button" class="btn btn-primary" data-reservecancha="'+c.id+'">Reservar</button>'); }).join("") :
+    (groups.length ? groups.map(courtGroupHtml).join("") :
       '<div class="empty">'+icons.court+'<p>'+(filterCanchasZona?"Ningún club de tu zona cargó horarios todavía.":"Ningún club cargó horarios de cancha todavía.")+'</p></div>');
 
   appEl.querySelector(".content").innerHTML = html;
   bindShared(prof);
+  bindCourtGroups(groups);
   document.querySelectorAll("[data-fz]").forEach(function(b){ b.addEventListener("click", function(){ filterCanchasZona = b.getAttribute("data-fz")==="mine"; renderCanchas(prof); }); });
 }
 
@@ -1411,6 +1451,7 @@ function renderNotif(prof){
     if(a.type==="join"){ text = '<b>'+a.actorName.split(",")[0]+'</b> se sumó a tu partido en '+a.requestLugar; icon = icons.handshake; }
     else if(a.type==="chat"){ var isClubMsg = a.requestId && a.requestId.indexOf("clubchat:")===0; text = isClubMsg ? '<b>'+a.actorName+'</b> te respondió por el chat' : '<b>'+a.actorName.split(",")[0]+'</b> te escribió en el chat de '+a.requestLugar; icon = icons.chat; }
     else if(a.type==="reserva"){ text = a.estado==="confirmada" ? '<b>'+a.actorName+'</b> confirmó tu reserva en '+a.requestLugar : '<b>'+a.actorName+'</b> no pudo confirmar tu reserva en '+a.requestLugar; icon = icons.court; }
+    else if(a.type==="noticia"){ text = '<b>'+a.actorName+'</b> publicó: '+a.requestLugar; icon = icons.news; }
     else { text = 'Nuevo partido para vos en <b>'+a.requestLugar+'</b> ('+a.actorName.split(",")[0]+')'; icon = icons.ball; }
     var clickable = (a.type==="join"||a.type==="chat") && a.requestId;
     var tag = clickable ? 'button type="button" data-openchat="'+a.requestId+'"' : 'div';
@@ -1680,11 +1721,12 @@ function renderClubView(prof, clubId){
     '<div class="content" id="cv-content"></div>';
 
   var el = document.getElementById("cv-content");
+  var myGroups = [];
   if(!club){
     el.innerHTML = '<div class="empty">'+icons.club+'<p>No pudimos cargar este club.</p></div>';
   } else {
     var following = prof && isClubFollowed(prof.id, clubId);
-    var myCanchas = freeSlots(canchas, reservas, clubId).sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
+    myGroups = groupSlotsByCourt(freeSlots(canchas, reservas, clubId));
     var myTorneos = torneos.filter(function(t){ return t.clubId===clubId; });
     var myNoticias = noticias.filter(function(n){ return n.clubId===clubId; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     var myReservas = prof ? reservas.filter(function(r){ return r.clubId===clubId && r.playerId===prof.id; }) : [];
@@ -1704,7 +1746,7 @@ function renderClubView(prof, clubId){
       '</div>'+
       (myTorneos.length ? '<p class="subhead">Torneos</p>'+myTorneos.map(function(t){ return torneoRowHtml(t, prof); }).join("") : '')+
       '<p class="subhead">Canchas libres</p>'+
-      (myCanchas.length ? myCanchas.map(function(c){ return canchaRowHtml(c, '<button type="button" class="btn btn-primary" data-reservecancha="'+c.id+'">Reservar</button>'); }).join("") :
+      (myGroups.length ? myGroups.map(courtGroupHtml).join("") :
         '<div class="empty" style="padding:20px 10px;"><p>Este club no cargó canchas libres.</p></div>')+
       (myReservas.length ? '<p class="subhead">Tus reservas acá</p>'+myReservas.map(reservaRowHtml).join("") : '')+
       (myNoticias.length ? '<p class="subhead">Noticias</p>'+myNoticias.map(noticiaRowHtml).join("") : '');
@@ -1716,6 +1758,7 @@ function renderClubView(prof, clubId){
     if(fb.getAttribute("data-mode")==="follow") followClubAction(clubId); else unfollowClubAction(clubId);
   });
   bindShared(prof);
+  bindCourtGroups(myGroups);
 }
 
 function renderAmigos(prof){

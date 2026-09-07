@@ -72,6 +72,20 @@ async function sendPushToPlayer(playerId, payload) {
   }
 }
 
+async function notifyAllPlayers(actorName, titulo, fecha) {
+  const players = await getAll("SELECT id FROM players");
+  if (!players.length) return;
+  const writes = players.map((p) => ({
+    sql: `INSERT INTO activity (id, forUserId, type, requestId, actorName, requestLugar, requestFecha, requestHora, timestamp)
+          VALUES (?,?,?,?,?,?,?,?,?)`,
+    args: [uid(), p.id, "noticia", null, actorName, titulo, fecha || "", "", Date.now()],
+  }));
+  await db.batch(writes, "write").catch((err) => console.error("Error notificando jugadores:", err));
+  players.forEach((p) => {
+    sendPushToPlayer(p.id, { title: actorName, body: titulo, url: "/" }).catch(() => {});
+  });
+}
+
 /* ---------------- helpers ---------------- */
 function slugify(s) {
   const accented = "áéíóúñüÁÉÍÓÚÑÜ";
@@ -478,13 +492,16 @@ app.delete("/api/my/canchas/:id", clubAuth, asyncRoute(async (req, res) => {
 app.post("/api/my/noticias", clubAuth, asyncRoute(async (req, res) => {
   const d = req.body || {};
   const club = await getRow("SELECT * FROM clubs WHERE id=?", [req.session.clubId]);
+  const clubName = club ? club.name : req.session.clubId;
   const id = uid();
+  const fecha = d.fecha || new Date().toISOString().slice(0, 10);
   await run(
     `INSERT INTO noticias (id, clubId, club, tipo, titulo, cuerpo, fecha, updatedAt)
      VALUES (?,?,?,?,?,?,?,?)`,
-    [id, req.session.clubId, club ? club.name : req.session.clubId, d.tipo || "general", d.titulo || "", d.cuerpo || "", d.fecha || new Date().toISOString().slice(0, 10), Date.now()]
+    [id, req.session.clubId, clubName, d.tipo || "general", d.titulo || "", d.cuerpo || "", fecha, Date.now()]
   );
   res.json({ id });
+  notifyAllPlayers(clubName, d.titulo || "", fecha).catch(() => {});
 }));
 app.delete("/api/my/noticias/:id", clubAuth, asyncRoute(async (req, res) => {
   await run("DELETE FROM noticias WHERE id=? AND clubId=?", [req.params.id, req.session.clubId]);
@@ -496,6 +513,7 @@ app.post("/api/my/torneos", clubAuth, asyncRoute(async (req, res) => {
   const club = await getRow("SELECT * FROM clubs WHERE id=?", [req.session.clubId]);
   const clubName = club ? club.name : req.session.clubId;
   const id = uid();
+  const torneoTitulo = "Torneo: " + (d.nombre || "");
   await run(
     `INSERT INTO torneos (id, clubId, clubName, nombre, categoria, fecha, cupo, inscriptos, rounds, campeon, estado, createdAt)
      VALUES (?,?,?,?,?,?,?,'[]','[]',NULL,'abierto',?)`,
@@ -506,13 +524,14 @@ app.post("/api/my/torneos", clubAuth, asyncRoute(async (req, res) => {
      VALUES (?,?,?,?,?,?,?,?)`,
     [
       uid(), req.session.clubId, clubName, "torneo",
-      "Torneo: " + (d.nombre || ""),
+      torneoTitulo,
       "Categoría " + (d.categoria || "todas las categorías") + (d.cupo ? " · Cupo " + d.cupo : "") + ". Anotate desde la página del club.",
       d.fecha || "",
       Date.now(),
     ]
   );
   res.json({ id });
+  notifyAllPlayers(clubName, torneoTitulo, d.fecha || "").catch(() => {});
 }));
 
 app.patch("/api/my/torneos/:id", clubAuth, asyncRoute(async (req, res) => {
