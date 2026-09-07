@@ -1409,7 +1409,7 @@ function renderNotif(prof){
   var html = mine.length ? mine.map(function(a){
     var text, icon;
     if(a.type==="join"){ text = '<b>'+a.actorName.split(",")[0]+'</b> se sumó a tu partido en '+a.requestLugar; icon = icons.handshake; }
-    else if(a.type==="chat"){ text = '<b>'+a.actorName.split(",")[0]+'</b> te escribió en el chat de '+a.requestLugar; icon = icons.chat; }
+    else if(a.type==="chat"){ var isClubMsg = a.requestId && a.requestId.indexOf("clubchat:")===0; text = isClubMsg ? '<b>'+a.actorName+'</b> te respondió por el chat' : '<b>'+a.actorName.split(",")[0]+'</b> te escribió en el chat de '+a.requestLugar; icon = icons.chat; }
     else if(a.type==="reserva"){ text = a.estado==="confirmada" ? '<b>'+a.actorName+'</b> confirmó tu reserva en '+a.requestLugar : '<b>'+a.actorName+'</b> no pudo confirmar tu reserva en '+a.requestLugar; icon = icons.court; }
     else { text = 'Nuevo partido para vos en <b>'+a.requestLugar+'</b> ('+a.actorName.split(",")[0]+')'; icon = icons.ball; }
     var clickable = (a.type==="join"||a.type==="chat") && a.requestId;
@@ -1568,7 +1568,54 @@ function escapeHtml(s){
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
+function renderClubChatView(prof, threadId){
+  var clubId = threadId.split(":")[1];
+  var club = clubs.find(function(c){ return c.id===clubId; });
+
+  appEl.innerHTML =
+    '<div class="topbar">'+
+      '<button class="icon-btn" id="ch-back">'+icons.back+'</button>'+
+      '<div class="name" style="font-family:var(--font-display);font-weight:800;font-size:16px;">'+(club?escapeHtml(club.name):"Club")+'</div>'+
+      '<div style="width:36px;"></div>'+
+    '</div>'+
+    '<div class="chat-body" id="ch-content"></div>';
+
+  var bodyEl = document.getElementById("ch-content");
+  var thread = messages.filter(function(m){ return m.requestId===threadId; }).sort(function(a,b){ return a.timestamp-b.timestamp; });
+
+  var bubbles = thread.length ? thread.map(function(m){
+    var mine = m.senderId===prof.id;
+    return '<div class="bubble '+(mine?"mine":"other")+'">'+
+      (mine?"":'<span class="b-name">'+escapeHtml(m.senderName.split(",")[0])+'</span>')+
+      escapeHtml(m.text)+
+      '<span class="b-time">hace '+timeAgo(m.timestamp)+'</span>'+
+    '</div>';
+  }).join("") : '<div class="empty" style="padding:40px 20px;">'+icons.chat+'<p>Escribile al club para coordinar tu reserva o consultar disponibilidad.</p></div>';
+
+  bodyEl.innerHTML =
+    '<p class="section-sub" style="padding:10px 16px 0;margin-bottom:0;">Con: '+(club?escapeHtml(club.name):"—")+'</p>'+
+    '<div class="chat-messages" id="ch-messages">'+bubbles+'</div>'+
+    '<div class="chat-input-row">'+
+      '<input type="text" id="ch-input" placeholder="Escribí un mensaje...">'+
+      '<button type="button" class="chat-send-btn" id="ch-send">'+icons.send+'</button>'+
+    '</div>';
+
+  var msgList = document.getElementById("ch-messages");
+  if(msgList) msgList.scrollTop = msgList.scrollHeight;
+
+  var input = document.getElementById("ch-input");
+  function doSend(){
+    if(!input.value.trim()) return;
+    sendChatMessage(threadId, input.value);
+    input.value = "";
+  }
+  document.getElementById("ch-send").addEventListener("click", doSend);
+  input.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); doSend(); } });
+
+  document.getElementById("ch-back").addEventListener("click", function(){ viewingChatRequestId=null; viewingClubId=clubId; render(); });
+}
 function renderChatView(prof, requestId){
+  if(typeof requestId==="string" && requestId.indexOf("clubchat:")===0){ renderClubChatView(prof, requestId); return; }
   var r = requests.find(function(x){ return x.id===requestId; });
 
   appEl.innerHTML =
@@ -1648,10 +1695,11 @@ function renderClubView(prof, clubId){
         '<p style="font-family:var(--font-display);font-weight:800;font-size:18px;margin:12px 0 2px;">'+club.name+verifiedBadge()+'</p>'+
         '<p class="ptag">'+club.zona+'</p>'+
         (club.descripcion ? '<p style="font-size:12.5px;color:var(--ink-soft);margin-top:8px;">'+club.descripcion+'</p>' : '')+
-        '<div style="margin-top:16px;">'+
+        '<div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">'+
           (following
             ? '<button class="btn btn-ghost btn-full" id="cv-follow" data-mode="unfollow"><span class="icon-inline">'+icons.check+'</span> Siguiendo este club</button>'
             : '<button class="btn btn-primary btn-full" id="cv-follow" data-mode="follow"><span class="icon-inline">'+icons.plus+'</span> Seguir club</button>')+
+          (prof ? '<button type="button" class="btn btn-ghost btn-full" data-openchat="clubchat:'+clubId+':'+prof.id+'"><span class="icon-inline">'+icons.chat+'</span> Escribirle al club</button>' : '')+
         '</div>'+
       '</div>'+
       (myTorneos.length ? '<p class="subhead">Torneos</p>'+myTorneos.map(function(t){ return torneoRowHtml(t, prof); }).join("") : '')+
@@ -1730,7 +1778,7 @@ function bindShared(prof){
   document.querySelectorAll("[data-viewclub]").forEach(function(b){ b.addEventListener("click", function(){ var id=b.getAttribute("data-viewclub"); if(id){ viewingClubId=id; render(); } }); });
   document.querySelectorAll("[data-jointorneo]").forEach(function(b){ b.addEventListener("click", function(){ joinTorneoAction(b.getAttribute("data-jointorneo")); }); });
   document.querySelectorAll("[data-reservecancha]").forEach(function(b){ b.addEventListener("click", function(){ reserveCanchaAction(b.getAttribute("data-reservecancha")); }); });
-  document.querySelectorAll("[data-openchat]").forEach(function(b){ b.addEventListener("click", function(){ viewingChatRequestId = b.getAttribute("data-openchat"); render(); }); });
+  document.querySelectorAll("[data-openchat]").forEach(function(b){ b.addEventListener("click", function(){ viewingChatRequestId = b.getAttribute("data-openchat"); viewingClubId = null; render(); }); });
 }
 
 function unreadCount(prof){

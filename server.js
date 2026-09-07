@@ -432,6 +432,33 @@ app.post("/api/push/subscribe", asyncRoute(async (req, res) => {
 /* ---------------- club-owner authenticated routes ---------------- */
 const clubAuth = requireAuth("club");
 
+/* ---------------- mensajes jugador <-> club ---------------- */
+app.get("/api/my/messages/threads", clubAuth, asyncRoute(async (req, res) => {
+  const prefix = "clubchat:" + req.session.clubId + ":";
+  const rows = await getAll("SELECT * FROM messages WHERE requestId LIKE ? ORDER BY timestamp DESC LIMIT 500", [prefix + "%"]);
+  res.json(rows);
+}));
+app.post("/api/my/messages", clubAuth, asyncRoute(async (req, res) => {
+  const { playerId, text } = req.body || {};
+  if (!playerId || !text || !String(text).trim()) return res.status(400).json({ error: "Faltan datos." });
+  const club = await getRow("SELECT * FROM clubs WHERE id=?", [req.session.clubId]);
+  const clubName = club ? club.name : req.session.clubId;
+  const threadId = "clubchat:" + req.session.clubId + ":" + playerId;
+  const body = String(text).slice(0, 2000);
+  const id = uid();
+  await run(
+    "INSERT INTO messages (id, requestId, senderId, senderName, text, timestamp) VALUES (?,?,?,?,?,?)",
+    [id, threadId, "club:" + req.session.clubId, clubName, body, Date.now()]
+  );
+  await run(
+    `INSERT INTO activity (id, forUserId, type, requestId, actorName, requestLugar, requestFecha, requestHora, timestamp)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+    [uid(), playerId, "chat", threadId, clubName, clubName, "", "", Date.now()]
+  );
+  res.json({ id });
+  sendPushToPlayer(playerId, { title: clubName, body: body, url: "/" }).catch(() => {});
+}));
+
 app.post("/api/my/canchas", clubAuth, asyncRoute(async (req, res) => {
   const d = req.body || {};
   const club = await getRow("SELECT * FROM clubs WHERE id=?", [req.session.clubId]);
@@ -467,11 +494,23 @@ app.delete("/api/my/noticias/:id", clubAuth, asyncRoute(async (req, res) => {
 app.post("/api/my/torneos", clubAuth, asyncRoute(async (req, res) => {
   const d = req.body || {};
   const club = await getRow("SELECT * FROM clubs WHERE id=?", [req.session.clubId]);
+  const clubName = club ? club.name : req.session.clubId;
   const id = uid();
   await run(
     `INSERT INTO torneos (id, clubId, clubName, nombre, categoria, fecha, cupo, inscriptos, rounds, campeon, estado, createdAt)
      VALUES (?,?,?,?,?,?,?,'[]','[]',NULL,'abierto',?)`,
-    [id, req.session.clubId, club ? club.name : req.session.clubId, d.nombre || "", d.categoria || "", d.fecha || "", d.cupo || null, Date.now()]
+    [id, req.session.clubId, clubName, d.nombre || "", d.categoria || "", d.fecha || "", d.cupo || null, Date.now()]
+  );
+  await run(
+    `INSERT INTO noticias (id, clubId, club, tipo, titulo, cuerpo, fecha, updatedAt)
+     VALUES (?,?,?,?,?,?,?,?)`,
+    [
+      uid(), req.session.clubId, clubName, "torneo",
+      "Torneo: " + (d.nombre || ""),
+      "Categoría " + (d.categoria || "todas las categorías") + (d.cupo ? " · Cupo " + d.cupo : "") + ". Anotate desde la página del club.",
+      d.fecha || "",
+      Date.now(),
+    ]
   );
   res.json({ id });
 }));

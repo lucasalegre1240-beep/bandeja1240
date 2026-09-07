@@ -162,6 +162,18 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);min-heig
 .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink-faint);font-size:12.5px;text-decoration:none;margin-top:18px;}
 .back-link:hover{color:var(--ink-soft);}
 .loading-note{padding:40px 32px;color:var(--ink-faint);font-size:13.5px;}
+
+/* chat con jugadores */
+.chat-messages{display:flex;flex-direction:column;gap:8px;}
+.bubble{max-width:78%;padding:9px 12px;border-radius:15px;font-size:13.5px;line-height:1.4;word-wrap:break-word;}
+.bubble.mine{align-self:flex-end;background:var(--primary);color:var(--primary-ink);border-bottom-right-radius:4px;margin-left:auto;}
+.bubble.other{align-self:flex-start;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-bottom-left-radius:4px;}
+.bubble .b-name{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;opacity:.75;margin-bottom:3px;display:block;}
+.bubble .b-time{font-size:10px;opacity:.65;margin-top:4px;display:block;text-align:right;}
+.chat-input-row{display:flex;gap:8px;align-items:center;}
+.chat-input-row input{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:22px;padding:11px 16px;font-family:var(--font-body);font-size:14px;color:var(--ink);}
+.chat-send-btn{width:42px;height:42px;border-radius:50%;background:var(--primary);color:var(--primary-ink);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.chat-send-btn svg{width:18px;height:18px;}
 </style>
 </head>
 <body>
@@ -177,7 +189,10 @@ var icons = {
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>',
   court:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M12 4.5v15M3.5 12h17"/></svg>',
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-  verified:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 1.4 2.7-.4 1.3 2.4 2.4 1.3-.4 2.7L22 12l-1.6 2.4.4 2.7-2.4 1.3-1.3 2.4-2.7-.4L12 22l-2.4-1.6-2.7.4-1.3-2.4-2.4-1.3.4-2.7L2 12l1.6-2.4-.4-2.7 2.4-1.3 1.3-2.4 2.7.4L12 2z"/><path d="M9.3 12.4l1.9 1.9 3.7-4.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  verified:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 1.4 2.7-.4 1.3 2.4 2.4 1.3-.4 2.7L22 12l-1.6 2.4.4 2.7-2.4 1.3-1.3 2.4-2.7-.4L12 22l-2.4-1.6-2.7.4-1.3-2.4-2.4-1.3.4-2.7L2 12l1.6-2.4-.4-2.7 2.4-1.3 1.3-2.4 2.7.4L12 2z"/><path d="M9.3 12.4l1.9 1.9 3.7-4.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5 8 12l6.5 7"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v10.5H8.5L4 20V5.5Z"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L20 4l-7 16-2-7-7-1Z"/></svg>'
 };
 var NEWS_LABELS = { torneo:"Torneo", descuento:"Descuento", general:"Novedad" };
 var RESERVA_LABELS = { pendiente:"Pendiente", confirmada:"Confirmada", rechazada:"Rechazada" };
@@ -387,7 +402,8 @@ var loginError = "";
 var adminClubsCache = null;
 var adminPlayersCache = null;
 var adminSection = "calendario";
-var clubs = [], reservas = [], torneos = [], canchas = [], noticias = [];
+var adminChatThread = null;
+var clubs = [], reservas = [], torneos = [], canchas = [], noticias = [], messages = [];
 var subsStarted = false;
 
 function toast(msg){
@@ -418,9 +434,14 @@ function doLogin(role, user, pass){
     .catch(function(err){ loginError = err.message || "Usuario o contraseña incorrectos."; render(); });
 }
 function logout(){
-  fetchJSON("/api/auth/logout", { method:"POST" }).then(function(){ adminSession=null; loginError=""; render(); });
+  fetchJSON("/api/auth/logout", { method:"POST" }).then(function(){ adminSession=null; loginError=""; adminChatThread=null; render(); });
 }
 
+function escapeHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
 function sameData(prevJson, list){ return prevJson === JSON.stringify(list); }
 var lastJson = {};
 function startClubSubscriptions(){
@@ -431,6 +452,7 @@ function startClubSubscriptions(){
   apiSubscribe("/api/torneos", function(list){ if(sameData(lastJson.torneos, list)) return; lastJson.torneos=JSON.stringify(list); torneos=list; render(); }, 6000);
   apiSubscribe("/api/canchas", function(list){ if(sameData(lastJson.canchas, list)) return; lastJson.canchas=JSON.stringify(list); canchas=list; render(); }, 6000);
   apiSubscribe("/api/noticias", function(list){ if(sameData(lastJson.noticias, list)) return; lastJson.noticias=JSON.stringify(list); noticias=list; render(); }, 6000);
+  apiSubscribe("/api/my/messages/threads", function(list){ if(sameData(lastJson.messages, list)) return; lastJson.messages=JSON.stringify(list); messages=list; render(); }, 6000);
 }
 
 /* ---------------- superadmin actions ---------------- */
@@ -474,6 +496,65 @@ function sendMembershipAlert(clubId){
 function clearMembershipAlert(clubId){
   fetchJSON("/api/admin/clubs/"+clubId, { method:"PATCH", body:JSON.stringify({ membershipAlert:false }) })
     .then(function(){ adminClubsCache=null; toast("Aviso de membresía quitado."); render(); });
+}
+
+/* ---------------- club-owner messages ---------------- */
+function clubMessageThreads(clubId){
+  var prefix = "clubchat:"+clubId+":";
+  var groups = {};
+  messages.filter(function(m){ return m.requestId && m.requestId.indexOf(prefix)===0; }).forEach(function(m){
+    var playerId = m.requestId.slice(prefix.length);
+    if(!groups[playerId]) groups[playerId] = { playerId:playerId, playerName:null, last:null };
+    if(m.senderId===playerId) groups[playerId].playerName = m.senderName;
+    if(!groups[playerId].last || m.timestamp>groups[playerId].last.timestamp) groups[playerId].last = m;
+  });
+  return Object.keys(groups).map(function(k){ return groups[k]; }).sort(function(a,b){ return b.last.timestamp-a.last.timestamp; });
+}
+function threadRowHtml(t){
+  return (
+    '<button type="button" class="card" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;" data-openthread="'+t.playerId+'">'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div class="who-name">'+escapeHtml(t.playerName||"Jugador")+'</div>'+
+        '<div class="who-tag" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(t.last.text)+'</div>'+
+      '</div>'+
+      '<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);flex-shrink:0;">hace '+timeAgo(t.last.timestamp)+'</div>'+
+    '</button>'
+  );
+}
+function renderClubChatAdmin(clubId, playerId){
+  var threadId = "clubchat:"+clubId+":"+playerId;
+  var thread = messages.filter(function(m){ return m.requestId===threadId; }).sort(function(a,b){ return a.timestamp-b.timestamp; });
+  var playerName = "Jugador";
+  thread.forEach(function(m){ if(m.senderId===playerId) playerName = m.senderName; });
+  var bubbles = thread.length ? thread.map(function(m){
+    var mine = m.senderId!==playerId;
+    return '<div class="bubble '+(mine?"mine":"other")+'">'+
+      (mine?"":'<span class="b-name">'+escapeHtml(m.senderName)+'</span>')+
+      escapeHtml(m.text)+
+      '<span class="b-time">hace '+timeAgo(m.timestamp)+'</span>'+
+    '</div>';
+  }).join("") : '<div class="empty" style="padding:24px 10px;"><p>Todavía no hay mensajes con este jugador.</p></div>';
+
+  return (
+    '<button type="button" class="btn btn-ghost" id="mc-back" style="margin-bottom:14px;">'+icons.back+' Volver a mensajes</button>'+
+    '<p class="section-sub" style="margin-top:0;">Con: '+escapeHtml(playerName)+'</p>'+
+    '<div class="chat-messages" id="mc-messages" style="max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius-md);padding:10px;margin-bottom:10px;">'+bubbles+'</div>'+
+    '<div class="chat-input-row">'+
+      '<input type="text" id="mc-input" placeholder="Escribí un mensaje...">'+
+      '<button type="button" class="chat-send-btn" id="mc-send">'+icons.send+'</button>'+
+    '</div>'
+  );
+}
+function sendClubReply(clubId, playerId, text){
+  if(!text.trim()) return;
+  var body = text.trim();
+  var club = clubs.find(function(c){ return c.id===clubId; });
+  var clubName = club ? club.name : clubId;
+  var threadId = "clubchat:"+clubId+":"+playerId;
+  messages = messages.concat([{ id:"tmp"+Date.now(), requestId:threadId, senderId:"club:"+clubId, senderName:clubName, text:body, timestamp:Date.now() }]);
+  render();
+  fetchJSON("/api/my/messages", { method:"POST", body:JSON.stringify({ playerId:playerId, text:body }) })
+    .catch(function(err){ toast(err.message||"No se pudo enviar."); });
 }
 
 /* ---------------- club-owner actions ---------------- */
@@ -825,6 +906,15 @@ function renderClubDashboard(clubId){
           (myCanchas.length ? '<div class="card-grid">'+myCanchas.map(canchaAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no cargaste ninguna cancha.</p></div>')+
         '</div>'+
       '</div>';
+  } else if(adminSection==="mensajes"){
+    if(adminChatThread){
+      sectionHtml = renderClubChatAdmin(clubId, adminChatThread);
+    } else {
+      var threads = clubMessageThreads(clubId);
+      sectionHtml =
+        '<p class="section-sub">Jugadores que te escribieron para coordinar una reserva o consultar algo.</p>'+
+        (threads.length ? '<div class="card-grid">'+threads.map(threadRowHtml).join("")+'</div>' : '<div class="empty"><p>Todavía no te escribió ningún jugador.</p></div>');
+    }
   } else {
     sectionHtml =
       '<div class="dash-grid">'+
@@ -855,8 +945,8 @@ function renderClubDashboard(clubId){
       toastWrap()+
       '<div class="content">'+
         '<div class="chiprow">'+
-          ["calendario","reservas","torneos","canchas","noticias"].map(function(s){
-            var labels = { calendario:"Calendario", reservas:"Reservas", torneos:"Torneos", canchas:"Canchas", noticias:"Noticias" };
+          ["calendario","reservas","torneos","canchas","mensajes","noticias"].map(function(s){
+            var labels = { calendario:"Calendario", reservas:"Reservas", torneos:"Torneos", canchas:"Canchas", mensajes:"Mensajes", noticias:"Noticias" };
             return '<button type="button" class="chip'+(adminSection===s?" active":"")+'" data-sec="'+s+'">'+labels[s]+'</button>';
           }).join("")+
         '</div>'+
@@ -867,7 +957,19 @@ function renderClubDashboard(clubId){
   var calWrap = document.getElementById("cal-wrap");
   if(calWrap) calWrap.scrollTop = 8*56 - 20;
   document.getElementById("cd-logout").addEventListener("click", logout);
-  document.querySelectorAll("[data-sec]").forEach(function(b){ b.addEventListener("click", function(){ adminSection=b.getAttribute("data-sec"); render(); }); });
+  document.querySelectorAll("[data-sec]").forEach(function(b){ b.addEventListener("click", function(){ adminSection=b.getAttribute("data-sec"); adminChatThread=null; render(); }); });
+  document.querySelectorAll("[data-openthread]").forEach(function(b){ b.addEventListener("click", function(){ adminChatThread=b.getAttribute("data-openthread"); render(); }); });
+  var mcBack = document.getElementById("mc-back");
+  if(mcBack) mcBack.addEventListener("click", function(){ adminChatThread=null; render(); });
+  var mcSend = document.getElementById("mc-send");
+  if(mcSend){
+    var mcInput = document.getElementById("mc-input");
+    function doMcSend(){ if(!mcInput.value.trim()) return; sendClubReply(clubId, adminChatThread, mcInput.value); mcInput.value=""; }
+    mcSend.addEventListener("click", doMcSend);
+    mcInput.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); doMcSend(); } });
+  }
+  var mcMsgs = document.getElementById("mc-messages");
+  if(mcMsgs) mcMsgs.scrollTop = mcMsgs.scrollHeight;
   document.querySelectorAll("[data-confirmres]").forEach(function(b){ b.addEventListener("click", function(){ confirmReservaAction(b.getAttribute("data-confirmres")); }); });
   document.querySelectorAll("[data-rejectres]").forEach(function(b){ b.addEventListener("click", function(){ rejectReservaAction(b.getAttribute("data-rejectres")); }); });
   document.querySelectorAll("[data-delcancha]").forEach(function(b){ b.addEventListener("click", function(){ adminDeleteCancha(b.getAttribute("data-delcancha")); }); });
