@@ -585,7 +585,7 @@ body{
       <div><h3>Singles, pareja o duelo por equipo</h3><p>Unite a un rival suelto, completá tu dupla o desafiá a otra pareja entera.</p></div>
     </div>
 
-    <p class="note"><b>Fase 1 de 2.</b> Esta es la app del jugador. Los torneos, los cruces automáticos y el calendario de canchas van en una app aparte, pensada para administradores de clubes.</p>
+    <p class="note">Los clubes gestionan torneos, cruces automáticos, canchas y reservas desde su propio panel en <b>/admin</b>, con la misma base de datos que ves acá.</p>
   </div>
 
   <div class="phone" id="phone">
@@ -1043,6 +1043,8 @@ function toast(msg){
   setTimeout(function(){ toasts = toasts.filter(function(x){return x.id!==t.id;}); render(); }, 3600);
 }
 
+function sameData(prevJson, list){ return prevJson === JSON.stringify(list); }
+var lastJson = {};
 function onRequests(list){
   if(!initialReqLoad){
     var prof = profile();
@@ -1056,24 +1058,30 @@ function onRequests(list){
     });
   }
   list.forEach(function(r){ seenReqIds[r.id]=true; });
+  var json = JSON.stringify(list);
+  var changed = !initialReqLoad ? !sameData(lastJson.requests, list) : true;
+  lastJson.requests = json;
   requests = list;
   initialReqLoad = false;
-  render();
+  if(changed) render();
 }
 function onActivity(list){
-  activity = list;
-  initialActLoad = false;
-  render();
+  if(initialActLoad || !sameData(lastJson.activity, list)){
+    lastJson.activity = JSON.stringify(list);
+    activity = list;
+    initialActLoad = false;
+    render();
+  }
 }
-function onPlayers(list){ players = list; render(); }
-function onFriends(list){ friends = list; render(); }
-function onCanchas(list){ canchas = list; render(); }
-function onNoticias(list){ noticias = list; render(); }
-function onClubs(list){ clubs = list; render(); }
-function onClubFollows(list){ clubFollows = list; render(); }
-function onTorneos(list){ torneos = list; render(); }
-function onReservas(list){ reservas = list; render(); }
-function onMessages(list){ messages = list; render(); }
+function onPlayers(list){ if(sameData(lastJson.players, list)) return; lastJson.players=JSON.stringify(list); players = list; render(); }
+function onFriends(list){ if(sameData(lastJson.friends, list)) return; lastJson.friends=JSON.stringify(list); friends = list; render(); }
+function onCanchas(list){ if(sameData(lastJson.canchas, list)) return; lastJson.canchas=JSON.stringify(list); canchas = list; render(); }
+function onNoticias(list){ if(sameData(lastJson.noticias, list)) return; lastJson.noticias=JSON.stringify(list); noticias = list; render(); }
+function onClubs(list){ if(sameData(lastJson.clubs, list)) return; lastJson.clubs=JSON.stringify(list); clubs = list; render(); }
+function onClubFollows(list){ if(sameData(lastJson.clubFollows, list)) return; lastJson.clubFollows=JSON.stringify(list); clubFollows = list; render(); }
+function onTorneos(list){ if(sameData(lastJson.torneos, list)) return; lastJson.torneos=JSON.stringify(list); torneos = list; render(); }
+function onReservas(list){ if(sameData(lastJson.reservas, list)) return; lastJson.reservas=JSON.stringify(list); reservas = list; render(); }
+function onMessages(list){ if(sameData(lastJson.messages, list)) return; lastJson.messages=JSON.stringify(list); messages = list; render(); }
 
 function bootStore(){
   store = makeApiStore();

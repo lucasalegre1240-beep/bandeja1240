@@ -420,14 +420,16 @@ function logout(){
   fetchJSON("/api/auth/logout", { method:"POST" }).then(function(){ adminSession=null; loginError=""; render(); });
 }
 
+function sameData(prevJson, list){ return prevJson === JSON.stringify(list); }
+var lastJson = {};
 function startClubSubscriptions(){
   if(subsStarted) return;
   subsStarted = true;
-  apiSubscribe("/api/clubs", function(list){ clubs=list; render(); }, 8000);
-  apiSubscribe("/api/reservas", function(list){ reservas=list; render(); }, 5000);
-  apiSubscribe("/api/torneos", function(list){ torneos=list; render(); }, 6000);
-  apiSubscribe("/api/canchas", function(list){ canchas=list; render(); }, 6000);
-  apiSubscribe("/api/noticias", function(list){ noticias=list; render(); }, 6000);
+  apiSubscribe("/api/clubs", function(list){ if(sameData(lastJson.clubs, list)) return; lastJson.clubs=JSON.stringify(list); clubs=list; render(); }, 8000);
+  apiSubscribe("/api/reservas", function(list){ if(sameData(lastJson.reservas, list)) return; lastJson.reservas=JSON.stringify(list); reservas=list; render(); }, 5000);
+  apiSubscribe("/api/torneos", function(list){ if(sameData(lastJson.torneos, list)) return; lastJson.torneos=JSON.stringify(list); torneos=list; render(); }, 6000);
+  apiSubscribe("/api/canchas", function(list){ if(sameData(lastJson.canchas, list)) return; lastJson.canchas=JSON.stringify(list); canchas=list; render(); }, 6000);
+  apiSubscribe("/api/noticias", function(list){ if(sameData(lastJson.noticias, list)) return; lastJson.noticias=JSON.stringify(list); noticias=list; render(); }, 6000);
 }
 
 /* ---------------- superadmin actions ---------------- */
