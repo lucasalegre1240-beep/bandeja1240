@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bandeja Admin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Karla:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap');
+html,body{margin:0;padding:0;}
+img{max-width:100%;}
+[hidden]{display:none!important;}
+
+:root{
+  --bg:#0a0a0a;
+  --court-wash:#131311;
+  --surface:#1d1c19;
+  --surface-2:#28251c;
+  --ink:#f6f1e2;
+  --ink-soft:#b4ad99;
+  --ink-faint:#77715f;
+  --line:#3a362a;
+  --line-soft:#252319;
+  --primary:#f5c400;
+  --primary-dark:#caa000;
+  --primary-ink:#171200;
+  --accent:#ff9d1a;
+  --danger:#ff5d47;
+  --danger-bg:#341410;
+  --success:#3fd482;
+  --blue:#6cb8ff;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 16px 32px -16px rgba(0,0,0,.85);
+  --radius-lg:22px;
+  --radius-md:14px;
+  --font-display:'Archivo',system-ui,sans-serif;
+  --font-body:'Karla',system-ui,sans-serif;
+  --font-mono:'Space Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);min-height:100vh;}
+
+/* ---- shell ---- */
+.shell{max-width:1080px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--court-wash);box-shadow:0 0 0 1px var(--line);}
+.topbar{padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand .mark{width:38px;height:38px;border-radius:11px;background:var(--primary);color:var(--primary-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.brand .mark svg{width:21px;height:21px;}
+.brand .name{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:-.01em;line-height:1.15;}
+.brand .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.07em;text-transform:uppercase;margin-top:2px;}
+.topbar-actions{display:flex;align-items:center;gap:10px;}
+.text-link{color:var(--ink-soft);font-size:12.5px;font-weight:600;text-decoration:none;padding:8px 4px;}
+.text-link:hover{color:var(--ink);}
+.icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);}
+.icon-btn svg{width:17px;height:17px;}
+.icon-btn:hover{background:var(--surface-2);}
+
+.content{flex:1;padding:32px;width:100%;}
+.section-title{font-family:var(--font-display);font-weight:800;font-size:22px;margin:0 0 4px;letter-spacing:-.01em;}
+.section-sub{font-size:13.5px;color:var(--ink-soft);margin:0 0 22px;line-height:1.5;max-width:640px;}
+
+.chiprow{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-family:var(--font-body);font-weight:600;font-size:13px;padding:9px 17px;border-radius:999px;cursor:pointer;}
+.chip.active{background:var(--primary);color:var(--primary-ink);border-color:var(--primary);}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:16px 17px;}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
+.card-place{font-family:var(--font-display);font-weight:700;font-size:15.5px;margin:0 0 2px;}
+.who-tag{font-size:11.5px;color:var(--ink-faint);}
+.who-name{font-size:13px;font-weight:700;}
+.note-line{font-size:12px;color:var(--ink-soft);margin-top:9px;line-height:1.5;padding-top:9px;border-top:1px solid var(--line-soft);}
+.tipo-pill{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--primary-dark);background:color-mix(in srgb, var(--primary) 14%, transparent);padding:4px 8px;border-radius:6px;display:inline-block;font-weight:700;}
+
+.btn{font-family:var(--font-body);font-weight:700;font-size:13px;border-radius:9px;border:none;padding:10px 16px;cursor:pointer;white-space:nowrap;}
+.btn-primary{background:var(--primary);color:var(--primary-ink);}
+.btn-ghost{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line);}
+.btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+.btn:disabled{opacity:.55;cursor:default;}
+.btn-full{width:100%;justify-content:center;display:flex;align-items:center;gap:6px;}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:20px;position:sticky;top:32px;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.panel-head h3{font-family:var(--font-display);font-size:16.5px;font-weight:800;margin:0;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;font-family:var(--font-mono);}
+.field input[type=text],.field input[type=date],.field input[type=time],.field input[type=password],.field input[type=number],.field select,.field textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-family:var(--font-body);font-size:14px;color:var(--ink);}
+.field textarea{resize:vertical;min-height:72px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+.subhead{font-family:var(--font-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin:0 0 14px;font-weight:700;}
+
+.status-pill{font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;padding:4px 9px;border-radius:6px;letter-spacing:.03em;white-space:nowrap;}
+.status-abierto{background:color-mix(in srgb, var(--blue) 16%, transparent);color:var(--blue);}
+.status-confirmado{background:color-mix(in srgb, var(--success) 16%, transparent);color:var(--success);}
+.status-cancelado{background:var(--danger-bg);color:var(--danger);}
+
+.local-banner{background:var(--danger-bg);color:var(--danger);font-size:12.5px;padding:11px 15px;border-radius:9px;margin-bottom:22px;line-height:1.5;}
+
+.empty{text-align:center;padding:56px 20px;color:var(--ink-faint);background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius-md);}
+.empty p{font-size:14px;line-height:1.5;margin:0;}
+
+.toast-wrap{position:fixed;top:20px;right:20px;z-index:80;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:340px;}
+.toast{background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:13px 15px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 26px -10px rgba(0,0,0,.6);animation:toastin .25s ease-out;pointer-events:auto;}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.toast span{font-size:13px;font-weight:600;line-height:1.4;}
+@keyframes toastin{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+
+/* dashboard layout */
+.dash-grid{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start;}
+@media (max-width:800px){.dash-grid{grid-template-columns:1fr;}.panel{position:static;}}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+
+/* torneo bracket */
+.bracket-round{margin-bottom:14px;}
+.bracket-round-label{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:8px;font-weight:700;}
+.cruce{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.cruce-names{display:flex;align-items:center;gap:8px;}
+.cruce-side{flex:1;min-width:0;font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-soft);}
+.cruce-side.won{color:var(--success);}
+.cruce-side.lost{color:var(--ink-faint);text-decoration:line-through;font-weight:600;}
+.cruce-vs{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-faint);flex-shrink:0;}
+.cruce-meta{font-size:11px;color:var(--ink-faint);margin-top:6px;}
+.champion-banner{background:color-mix(in srgb, var(--primary) 16%, transparent);border:1px solid var(--primary);color:var(--primary-dark);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;text-align:center;font-weight:700;}
+
+/* calendar */
+.cal-wrap{overflow:auto;max-height:620px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);scrollbar-color:color-mix(in srgb, var(--ink) 25%, transparent) transparent;}
+.cal-wrap::-webkit-scrollbar{width:9px;height:9px;}
+.cal-wrap::-webkit-scrollbar-track{background:transparent;}
+.cal-wrap::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--ink) 25%, transparent);border-radius:6px;}
+.cal-grid{display:grid;grid-template-columns:60px repeat(7, minmax(150px,1fr));min-width:960px;}
+.cal-head{position:sticky;top:0;background:color-mix(in srgb, var(--surface) 55%, transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2;padding:6px 6px;text-align:center;font-family:var(--font-display);font-weight:800;font-size:12px;color:var(--ink-soft);border-bottom:2px solid var(--line);border-left:1px solid var(--line-soft);}
+.cal-head.today{color:var(--primary);}
+.cal-timecol{border-right:1px solid var(--line);}
+.cal-time-label{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);text-align:right;padding-right:8px;box-sizing:border-box;transform:translateY(-4px);}
+.cal-time-label:first-child{transform:none;padding-top:2px;}
+.cal-daycol{position:relative;border-left:1px solid var(--line-soft);background-image:repeating-linear-gradient(to bottom, transparent, transparent 55px, var(--line-soft) 55px, var(--line-soft) 56px);}
+.cal-event{position:absolute;border-radius:8px;padding:5px 7px;font-size:11px;line-height:1.3;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.25);box-sizing:border-box;}
+.cal-event b{display:block;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-event .cal-time{font-family:var(--font-mono);font-size:9.5px;opacity:.85;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-event.pendiente{background:color-mix(in srgb, var(--blue) 25%, var(--surface));border:1px solid var(--blue);color:var(--blue);}
+.cal-event.confirmada{background:color-mix(in srgb, var(--success) 25%, var(--surface));border:1px solid var(--success);color:var(--success);}
+.cal-event.rechazada{background:var(--danger-bg);border:1px solid var(--danger);color:var(--danger);opacity:.8;}
+.cal-legend{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;}
+.cal-legend span{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);}
+.cal-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+
+/* avatar picker */
+.icon-inline{display:inline-flex;width:13px;height:13px;vertical-align:-2px;flex-shrink:0;}
+.icon-inline svg{width:100%;height:100%;}
+.avatar-picker{position:relative;cursor:pointer;flex-shrink:0;}
+.avatar-picker svg{width:40%;height:40%;}
+.avatar-edit{position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:var(--primary);color:var(--primary-ink);display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);}
+.avatar-edit svg{width:9px;height:9px;}
+.avatar-hint{font-size:11px;color:var(--ink-faint);margin-top:8px;text-align:center;}
+
+/* login */
+.login-shell{min-height:100vh;position:relative;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);overflow:hidden;}
+.login-shell::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line-soft) 1px, transparent 1px),linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(ellipse 70% 55% at 50% 0%, black 0%, transparent 70%);mask-image:radial-gradient(ellipse 70% 55% at 50% 0%, black 0%, transparent 70%);opacity:.55;pointer-events:none;}
+.login-card{position:relative;width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:38px 34px;box-shadow:var(--shadow);}
+.login-card .mark-lg{width:56px;height:56px;border-radius:16px;background:var(--primary);color:var(--primary-ink);display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+.login-card .mark-lg svg{width:29px;height:29px;}
+.login-card h1{font-family:var(--font-display);font-weight:900;font-size:25px;margin:0 0 6px;letter-spacing:-.01em;}
+.login-card p.lead{font-size:14px;color:var(--ink-soft);margin:0 0 22px;line-height:1.5;}
+.back-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink-faint);font-size:12.5px;text-decoration:none;margin-top:18px;}
+.back-link:hover{color:var(--ink-soft);}
+.loading-note{padding:40px 32px;color:var(--ink-faint);font-size:13.5px;}
+</style>
+</head>
+<body>
+<div id="root"><!-- rendered by JS --></div>
+
+<script>
+(function(){
+"use strict";
+
+var icons = {
+  club:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V7.5l8-4 8 4V21"/><path d="M4 21h16M9.5 21v-4.5h5V21M9.5 10.5h.01M9.5 13.5h.01M14.5 10.5h.01M14.5 13.5h.01"/></svg>',
+  logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg>',
+  court:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M12 4.5v15M3.5 12h17"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  verified:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 1.4 2.7-.4 1.3 2.4 2.4 1.3-.4 2.7L22 12l-1.6 2.4.4 2.7-2.4 1.3-1.3 2.4-2.7-.4L12 22l-2.4-1.6-2.7.4-1.3-2.4-2.4-1.3.4-2.7L2 12l1.6-2.4-.4-2.7 2.4-1.3 1.3-2.4 2.7.4L12 2z"/><path d="M9.3 12.4l1.9 1.9 3.7-4.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+var NEWS_LABELS = { torneo:"Torneo", descuento:"Descuento", general:"Novedad" };
+var RESERVA_LABELS = { pendiente:"Pendiente", confirmada:"Confirmada", rechazada:"Rechazada" };
+var RESERVA_STATUS_CLASS = { pendiente:"status-abierto", confirmada:"status-confirmado", rechazada:"status-cancelado" };
+
+function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); }
+function isoInDays(n){ return new Date(Date.now()+n*86400000).toISOString().slice(0,10); }
+function fmtDateSafe(iso){
+  if(!iso) return "";
+  var d = new Date(iso+"T00:00:00");
+  var days=["dom","lun","mar","mié","jue","vie","sáb"];
+  var months=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()];
+}
+function pad2(n){ return n<10 ? "0"+n : ""+n; }
+function timeToMin(t){ var p=String(t||"00:00").split(":"); return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); }
+function verifiedBadge(){
+  return '<span class="icon-inline" style="color:var(--primary);margin-left:3px;" title="Club verificado">'+icons.verified+'</span>';
+}
+function pickPhoto(callback){
+  var input = document.createElement("input");
+  input.type = "file"; input.accept = "image/*";
+  input.onchange = function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var img = new Image();
+      img.onload = function(){
+        var size = 160, side = Math.min(img.width, img.height);
+        var canvas = document.createElement("canvas");
+        canvas.width = size; canvas.height = size;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, size, size);
+        callback(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+function avatarPickerInner(photo){
+  return photo
+    ? '<img src="'+photo+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">'
+    : '<div style="width:100%;height:100%;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);">'+icons.club+'</div>';
+}
+function avatarPickerHtml(id, photo, px){
+  return '<div class="avatar-picker" id="'+id+'" style="width:'+px+'px;height:'+px+'px;">'+avatarPickerInner(photo)+'<span class="avatar-edit">'+icons.plus+'</span></div>';
+}
+function bindAvatarPicker(id, onPhoto){
+  var wrap = document.getElementById(id);
+  if(!wrap) return;
+  wrap.addEventListener("click", function(){
+    pickPhoto(function(dataUrl){
+      wrap.innerHTML = avatarPickerInner(dataUrl)+'<span class="avatar-edit">'+icons.plus+'</span>';
+      onPhoto(dataUrl);
+    });
+  });
+}
+
+/* ---------------- cruces (bracket) ---------------- */
+function shuffleArr(arr){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=a[i]; a[i]=a[j]; a[j]=tmp; }
+  return a;
+}
+function roundLabel(idx, total){
+  var fromEnd = total-1-idx;
+  if(fromEnd===0) return "Final";
+  if(fromEnd===1) return "Semifinal";
+  if(fromEnd===2) return "Cuartos de final";
+  return "Ronda "+(idx+1);
+}
+function generateFirstRound(inscriptos){
+  var shuffled = shuffleArr(inscriptos);
+  var round = [];
+  for(var i=0;i<shuffled.length;i+=2){
+    var p1 = shuffled[i], p2 = shuffled[i+1]||null;
+    round.push({ id:uid(), p1:p1, p2:p2, winnerId: p2?null:p1.id, fecha:"", hora:"", cancha:"" });
+  }
+  return round;
+}
+function generateNextRoundFrom(prevRound){
+  var winners = prevRound.map(function(m){
+    if(!m.winnerId) return null;
+    if(m.p1 && m.p1.id===m.winnerId) return m.p1;
+    if(m.p2 && m.p2.id===m.winnerId) return m.p2;
+    return null;
+  });
+  if(winners.some(function(w){ return !w; })) return null;
+  var round = [];
+  for(var i=0;i<winners.length;i+=2){
+    var p1=winners[i], p2=winners[i+1]||null;
+    round.push({ id:uid(), p1:p1, p2:p2, winnerId: p2?null:p1.id, fecha:"", hora:"", cancha:"" });
+  }
+  return round;
+}
+function matchSideName(p){ return p ? p.name.split(",")[0] : "— (libre)"; }
+function renderBracketHtml(t){
+  if(!t.rounds || !t.rounds.length) return "";
+  var totalRounds = t.rounds.length;
+  var html = "";
+  if(t.estado==="finalizado" && t.campeon){
+    html += '<div class="champion-banner">🏆 Campeón: '+matchSideName(t.campeon)+'</div>';
+  }
+  t.rounds.forEach(function(round, ri){
+    html += '<div class="bracket-round"><div class="bracket-round-label">'+roundLabel(ri, totalRounds)+'</div>';
+    round.forEach(function(m, mi){
+      var isDone = !!m.winnerId;
+      var p1Won = isDone && m.p1 && m.p1.id===m.winnerId;
+      var p2Won = isDone && m.p2 && m.p2.id===m.winnerId;
+      html +=
+        '<div class="cruce">'+
+          '<div class="cruce-names">'+
+            '<div class="cruce-side'+(p1Won?" won":(isDone&&m.p1?" lost":""))+'">'+matchSideName(m.p1)+'</div>'+
+            '<div class="cruce-vs">VS</div>'+
+            '<div class="cruce-side'+(p2Won?" won":(isDone&&m.p2?" lost":""))+'" style="text-align:right;">'+matchSideName(m.p2)+'</div>'+
+          '</div>'+
+          '<div class="field-row" style="margin-top:8px;">'+
+            '<div class="field" style="margin-bottom:6px;"><input type="date" id="mf-'+t.id+'-'+ri+'-'+mi+'" value="'+(m.fecha||"")+'"></div>'+
+            '<div class="field" style="margin-bottom:6px;"><input type="time" id="mh-'+t.id+'-'+ri+'-'+mi+'" value="'+(m.hora||"")+'"></div>'+
+          '</div>'+
+          '<div class="field" style="margin-bottom:8px;"><input type="text" id="mc-'+t.id+'-'+ri+'-'+mi+'" placeholder="Cancha" value="'+(m.cancha||"")+'"></div>'+
+          '<button type="button" class="btn btn-ghost btn-full" style="margin-bottom:8px;" data-savematch="'+t.id+'|'+ri+'|'+mi+'">Guardar horario y cancha</button>'+
+          (!isDone && m.p1 && m.p2
+            ? '<div class="field-row"><button type="button" class="btn btn-primary" data-winmatch="'+t.id+'|'+ri+'|'+mi+'|'+m.p1.id+'">Ganó '+matchSideName(m.p1)+'</button><button type="button" class="btn btn-primary" data-winmatch="'+t.id+'|'+ri+'|'+mi+'|'+m.p2.id+'">Ganó '+matchSideName(m.p2)+'</button></div>'
+            : "")+
+        '</div>';
+    });
+    html += '</div>';
+  });
+  return html;
+}
+function generateCrucesAction(torneoId){
+  var t = torneos.find(function(x){ return x.id===torneoId; });
+  if(!t || t.inscriptos.length<2) return;
+  var round = generateFirstRound(t.inscriptos);
+  fetchJSON("/api/my/torneos/"+torneoId, { method:"PATCH", body:JSON.stringify({ rounds:[round], estado:"en curso" }) })
+    .then(function(){ toast("Cruces generados."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo generar los cruces."); });
+}
+function setMatchWinnerAction(torneoId, roundIdx, matchIdx, winnerId){
+  var t = torneos.find(function(x){ return x.id===torneoId; });
+  if(!t || !t.rounds) return;
+  var rounds = JSON.parse(JSON.stringify(t.rounds));
+  rounds[roundIdx][matchIdx].winnerId = winnerId;
+  fetchJSON("/api/my/torneos/"+torneoId, { method:"PATCH", body:JSON.stringify({ rounds:rounds }) })
+    .then(function(){ render(); })
+    .catch(function(err){ toast(err.message||"No se pudo guardar."); });
+}
+function setMatchScheduleAction(torneoId, roundIdx, matchIdx, fecha, hora, cancha){
+  var t = torneos.find(function(x){ return x.id===torneoId; });
+  if(!t || !t.rounds) return;
+  var rounds = JSON.parse(JSON.stringify(t.rounds));
+  rounds[roundIdx][matchIdx].fecha = fecha; rounds[roundIdx][matchIdx].hora = hora; rounds[roundIdx][matchIdx].cancha = cancha;
+  fetchJSON("/api/my/torneos/"+torneoId, { method:"PATCH", body:JSON.stringify({ rounds:rounds }) })
+    .then(function(){ toast("Horario del cruce guardado."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo guardar."); });
+}
+function generateNextRoundAction(torneoId){
+  var t = torneos.find(function(x){ return x.id===torneoId; });
+  if(!t || !t.rounds || !t.rounds.length) return;
+  var lastRound = t.rounds[t.rounds.length-1];
+  if(lastRound.length===1){
+    if(!lastRound[0].winnerId) return;
+    var champ = lastRound[0].p1 && lastRound[0].p1.id===lastRound[0].winnerId ? lastRound[0].p1 : lastRound[0].p2;
+    fetchJSON("/api/my/torneos/"+torneoId, { method:"PATCH", body:JSON.stringify({ estado:"finalizado", campeon:champ }) })
+      .then(function(){ toast("¡Torneo finalizado!"); render(); })
+      .catch(function(err){ toast(err.message||"No se pudo finalizar."); });
+    return;
+  }
+  var next = generateNextRoundFrom(lastRound);
+  if(!next){ toast("Todavía faltan resultados de esta ronda."); return; }
+  var rounds = t.rounds.concat([next]);
+  fetchJSON("/api/my/torneos/"+torneoId, { method:"PATCH", body:JSON.stringify({ rounds:rounds }) })
+    .then(function(){ toast("Siguiente ronda generada."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo generar la ronda."); });
+}
+
+function fetchJSON(url, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({ "Content-Type":"application/json" }, opts.headers||{});
+  return fetch(url, opts).then(function(res){
+    if(res.status===204) return null;
+    return res.json().catch(function(){ return {}; }).then(function(body){
+      if(!res.ok){ var err = new Error(body.error || ("Error "+res.status)); err.status = res.status; throw err; }
+      return body;
+    });
+  });
+}
+function apiSubscribe(url, cb, intervalMs){
+  var stopped = false;
+  function tick(){ if(stopped) return; fetchJSON(url).then(function(data){ if(!stopped) cb(data); }).catch(function(){}); }
+  tick();
+  var timer = setInterval(tick, intervalMs || 5000);
+  return function(){ stopped = true; clearInterval(timer); };
+}
+
+/* ---------------- state ---------------- */
+var rootEl = document.getElementById("root");
+var toasts = [];
+var adminSession = null;
+var sessionChecked = false;
+var loginMode = "club";
+var loginError = "";
+var adminClubsCache = null;
+var adminSection = "calendario";
+var clubs = [], reservas = [], torneos = [], canchas = [], noticias = [];
+var subsStarted = false;
+
+function toast(msg){
+  var t = { id:uid(), msg:msg };
+  toasts.push(t);
+  render();
+  setTimeout(function(){ toasts = toasts.filter(function(x){ return x.id!==t.id; }); render(); }, 3600);
+}
+function toastWrap(){
+  return '<div class="toast-wrap">'+toasts.map(function(t){ return '<div class="toast"><span class="dot"></span><span>'+t.msg+'</span></div>'; }).join("")+'</div>';
+}
+
+/* ---------------- auth ---------------- */
+function checkSession(){
+  fetchJSON("/api/auth/me").then(function(data){
+    adminSession = data; sessionChecked = true;
+    if(data.role==="club") startClubSubscriptions(data.clubId);
+    render();
+  }).catch(function(){ adminSession = null; sessionChecked = true; render(); });
+}
+function doLogin(role, user, pass){
+  fetchJSON("/api/auth/login", { method:"POST", body:JSON.stringify({ role:role, username:user, password:pass }) })
+    .then(function(data){
+      adminSession = data; loginError = "";
+      if(data.role==="club") startClubSubscriptions(data.clubId);
+      render();
+    })
+    .catch(function(err){ loginError = err.message || "Usuario o contraseña incorrectos."; render(); });
+}
+function logout(){
+  fetchJSON("/api/auth/logout", { method:"POST" }).then(function(){ adminSession=null; loginError=""; render(); });
+}
+
+function startClubSubscriptions(){
+  if(subsStarted) return;
+  subsStarted = true;
+  apiSubscribe("/api/clubs", function(list){ clubs=list; render(); }, 8000);
+  apiSubscribe("/api/reservas", function(list){ reservas=list; render(); }, 5000);
+  apiSubscribe("/api/torneos", function(list){ torneos=list; render(); }, 6000);
+  apiSubscribe("/api/canchas", function(list){ canchas=list; render(); }, 6000);
+  apiSubscribe("/api/noticias", function(list){ noticias=list; render(); }, 6000);
+}
+
+/* ---------------- superadmin actions ---------------- */
+function createClubWithAccount(name, zona, user, pass, photo){
+  fetchJSON("/api/admin/clubs", { method:"POST", body:JSON.stringify({ name:name, zona:zona, photo:photo||null }) })
+    .then(function(r){ return fetchJSON("/api/admin/clubs/"+r.id+"/account", { method:"POST", body:JSON.stringify({ username:user, password:pass }) }); })
+    .then(function(){ adminClubsCache=null; toast("Club y acceso creados."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo crear el club."); });
+}
+function updateClubPhoto(clubId, photo){
+  fetchJSON("/api/admin/clubs/"+clubId, { method:"PATCH", body:JSON.stringify({ photo:photo }) })
+    .then(function(){ adminClubsCache=null; toast("Foto actualizada."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo actualizar."); });
+}
+function createAccountForClub(clubId, user, pass){
+  fetchJSON("/api/admin/clubs/"+clubId+"/account", { method:"POST", body:JSON.stringify({ username:user, password:pass }) })
+    .then(function(){ adminClubsCache=null; toast("Acceso creado."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo crear el acceso."); });
+}
+function resetClubPassword(clubId, pass){
+  fetchJSON("/api/admin/clubs/"+clubId+"/account", { method:"PATCH", body:JSON.stringify({ password:pass }) })
+    .then(function(){ toast("Contraseña actualizada."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo actualizar."); });
+}
+function deleteClubAction(clubId){
+  if(!window.confirm("¿Eliminar este club? También se van a borrar sus canchas, noticias, torneos, reservas y su acceso. Esta acción no se puede deshacer.")) return;
+  fetchJSON("/api/admin/clubs/"+clubId, { method:"DELETE" })
+    .then(function(){ adminClubsCache=null; toast("Club eliminado."); render(); })
+    .catch(function(err){ toast(err.message||"No se pudo eliminar."); });
+}
+function sendMembershipAlert(clubId){
+  fetchJSON("/api/admin/clubs/"+clubId, { method:"PATCH", body:JSON.stringify({ membershipAlert:true }) })
+    .then(function(){ adminClubsCache=null; toast("Aviso de membresía enviado al club."); render(); });
+}
+function clearMembershipAlert(clubId){
+  fetchJSON("/api/admin/clubs/"+clubId, { method:"PATCH", body:JSON.stringify({ membershipAlert:false }) })
+    .then(function(){ adminClubsCache=null; toast("Aviso de membresía quitado."); render(); });
+}
+
+/* ---------------- club-owner actions ---------------- */
+function confirmReservaAction(id){ fetchJSON("/api/my/reservas/"+id, { method:"PATCH", body:JSON.stringify({ estado:"confirmada" }) }).then(render).catch(function(err){ toast(err.message||"No se pudo confirmar."); }); }
+function rejectReservaAction(id){ fetchJSON("/api/my/reservas/"+id, { method:"PATCH", body:JSON.stringify({ estado:"rechazada" }) }).then(render).catch(function(err){ toast(err.message||"No se pudo rechazar."); }); }
+function adminCreateCancha(data){ fetchJSON("/api/my/canchas", { method:"POST", body:JSON.stringify(data) }).then(function(){ toast("Cancha publicada."); render(); }).catch(function(err){ toast(err.message||"No se pudo publicar."); }); }
+function adminDeleteCancha(id){ fetchJSON("/api/my/canchas/"+id, { method:"DELETE" }).then(render).catch(function(err){ toast(err.message||"No se pudo eliminar."); }); }
+function adminCreateNoticia(data){ fetchJSON("/api/my/noticias", { method:"POST", body:JSON.stringify(data) }).then(function(){ toast("Noticia publicada."); render(); }).catch(function(err){ toast(err.message||"No se pudo publicar."); }); }
+function adminDeleteNoticia(id){ fetchJSON("/api/my/noticias/"+id, { method:"DELETE" }).then(render).catch(function(err){ toast(err.message||"No se pudo eliminar."); }); }
+function adminCreateTorneo(data){ fetchJSON("/api/my/torneos", { method:"POST", body:JSON.stringify(data) }).then(function(){ toast("Torneo creado."); render(); }).catch(function(err){ toast(err.message||"No se pudo crear."); }); }
+
+/* ---------------- render ---------------- */
+function render(){
+  if(!sessionChecked){ rootEl.innerHTML = '<div class="loading-note">Cargando...</div>'; return; }
+  if(!adminSession){ renderLogin(); return; }
+  if(adminSession.role==="super"){ renderSuperadmin(); return; }
+  renderClubDashboard(adminSession.clubId);
+}
+
+function renderLogin(){
+  rootEl.innerHTML =
+    '<div class="login-shell">'+
+      '<div class="login-card">'+
+        '<div class="mark-lg">'+icons.club+'</div>'+
+        '<h1>Panel de Bandeja</h1>'+
+        '<p class="lead">Ingresá con el usuario y contraseña que te dio el administrador de Bandeja.</p>'+
+        '<div class="chiprow">'+
+          '<button type="button" class="chip'+(loginMode==="club"?" active":"")+'" data-lm="club">Dueño de club</button>'+
+          '<button type="button" class="chip'+(loginMode==="super"?" active":"")+'" data-lm="super">Administrador de Bandeja</button>'+
+        '</div>'+
+        '<div class="field"><label>Usuario</label><input type="text" id="al-user"></div>'+
+        '<div class="field"><label>Contraseña</label><input type="password" id="al-pass"></div>'+
+        (loginError ? '<p style="color:var(--danger);font-size:12.5px;margin:-4px 0 14px;">'+loginError+'</p>' : '')+
+        '<button type="button" class="btn btn-primary btn-full" id="al-submit" style="padding:13px;">Ingresar</button>'+
+        '<a href="/" class="back-link">← Volver a la app de jugadores</a>'+
+      '</div>'+
+    '</div>';
+
+  document.querySelectorAll("[data-lm]").forEach(function(b){ b.addEventListener("click", function(){ loginMode=b.getAttribute("data-lm"); loginError=""; render(); }); });
+  document.getElementById("al-submit").addEventListener("click", submitLogin);
+  ["al-user","al-pass"].forEach(function(id){
+    document.getElementById(id).addEventListener("keydown", function(e){ if(e.key==="Enter") submitLogin(); });
+  });
+  function submitLogin(){
+    var u = document.getElementById("al-user").value.trim();
+    var p = document.getElementById("al-pass").value;
+    if(!u || !p){ loginError="Completá usuario y contraseña."; render(); return; }
+    doLogin(loginMode, u, p);
+  }
+}
+
+function renderSuperadmin(){
+  var ncPhoto = null;
+  if(adminClubsCache===null){
+    rootEl.innerHTML =
+      '<div class="shell">'+
+        '<div class="topbar"><div class="brand"><div class="mark">'+icons.club+'</div><div><div class="name">Bandeja Admin</div></div></div></div>'+
+        '<div class="content"><p class="section-sub">Cargando clubes...</p></div>'+
+      '</div>';
+    fetchJSON("/api/admin/clubs").then(function(data){ adminClubsCache = data; render(); }).catch(function(){ adminClubsCache = []; render(); });
+    return;
+  }
+
+  var newClubForm =
+    '<div class="panel" style="position:static;margin-bottom:26px;">'+
+      '<div class="panel-head"><h3>Crear club nuevo</h3></div>'+
+      '<div style="text-align:center;margin-bottom:16px;">'+avatarPickerHtml("nc-avatar", null, 64)+'<p class="avatar-hint">Foto de perfil del club (opcional)</p></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Nombre del club</label><input type="text" id="nc-name" placeholder="Ej: Pádel del Sur"></div>'+
+        '<div class="field"><label>Zona / barrio</label><input type="text" id="nc-zona" placeholder="Ej: Avellaneda"></div>'+
+      '</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Usuario</label><input type="text" id="nc-user"></div>'+
+        '<div class="field"><label>Contraseña</label><input type="text" id="nc-pass"></div>'+
+      '</div>'+
+      '<button type="button" class="btn btn-primary" id="nc-submit">Crear club y acceso</button>'+
+    '</div>';
+
+  var clubCards = adminClubsCache.map(function(c){
+    return (
+      '<div class="card">'+
+        '<div class="card-top" style="align-items:center;">'+
+          '<div style="display:flex;align-items:center;gap:10px;min-width:0;">'+
+            avatarPickerHtml("cav-"+c.id, c.photo||null, 40)+
+            '<p class="card-place" style="margin-bottom:0;">'+c.name+verifiedBadge()+'</p>'+
+          '</div>'+
+          (c.membershipAlert ? '<span class="status-pill status-cancelado">Membresía por vencer</span>' : '')+
+        '</div>'+
+        '<div class="who-tag" style="margin-bottom:12px;">'+c.zona+'</div>'+
+        (c.hasAccount
+          ? ('<div class="note-line" style="border-top:none;padding-top:0;margin-top:0;margin-bottom:10px;">Usuario: <b>'+c.username+'</b></div>'+
+             '<div class="field"><label>Restablecer contraseña</label><input type="text" id="rp-'+c.id+'" placeholder="Nueva contraseña"></div>'+
+             '<button type="button" class="btn btn-ghost btn-full" data-resetpass="'+c.id+'">Restablecer contraseña</button>')
+          : ('<div class="field-row">'+
+               '<div class="field"><label>Usuario</label><input type="text" id="cu-'+c.id+'"></div>'+
+               '<div class="field"><label>Contraseña</label><input type="text" id="cp-'+c.id+'"></div>'+
+             '</div>'+
+             '<button type="button" class="btn btn-primary btn-full" data-createacc="'+c.id+'">Crear acceso</button>'))+
+        (c.membershipAlert
+          ? '<button type="button" class="btn btn-ghost btn-full" data-clearalert="'+c.id+'" style="margin-top:10px;">Quitar aviso de membresía</button>'
+          : '<button type="button" class="btn btn-ghost btn-full" data-sendalert="'+c.id+'" style="margin-top:10px;">Avisar: te quedan 2 días de membresía</button>')+
+        '<button type="button" class="btn btn-danger btn-full" data-delclub="'+c.id+'" style="margin-top:10px;">Eliminar club</button>'+
+      '</div>'
+    );
+  }).join("");
+
+  rootEl.innerHTML =
+    '<div class="shell">'+
+      '<div class="topbar">'+
+        '<div class="brand"><div class="mark">'+icons.club+'</div><div><div class="name">Bandeja Admin</div><div class="tag">Superadministrador</div></div></div>'+
+        '<div class="topbar-actions">'+
+          '<a href="/" class="text-link">Ver app de jugadores</a>'+
+          '<button class="icon-btn" id="sa-logout" title="Cerrar sesión">'+icons.logout+'</button>'+
+        '</div>'+
+      '</div>'+
+      toastWrap()+
+      '<div class="content">'+
+        '<h2 class="section-title">Clubes</h2>'+
+        '<p class="section-sub">Creá clubes y sus accesos para que puedan gestionar su información.</p>'+
+        newClubForm+
+        '<p class="subhead">Clubes ('+adminClubsCache.length+')</p>'+
+        (adminClubsCache.length ? '<div class="card-grid">'+clubCards+'</div>' : '<div class="empty"><p>Todavía no creaste ningún club.</p></div>')+
+      '</div>'+
+    '</div>';
+
+  document.getElementById("sa-logout").addEventListener("click", logout);
+  bindAvatarPicker("nc-avatar", function(d){ ncPhoto=d; });
+  adminClubsCache.forEach(function(c){ bindAvatarPicker("cav-"+c.id, function(d){ updateClubPhoto(c.id, d); }); });
+  document.getElementById("nc-submit").addEventListener("click", function(){
+    var name = document.getElementById("nc-name").value.trim();
+    var zona = document.getElementById("nc-zona").value.trim();
+    var user = document.getElementById("nc-user").value.trim();
+    var pass = document.getElementById("nc-pass").value.trim();
+    if(!name || !user || !pass) return;
+    createClubWithAccount(name, zona||"Sin zona", user, pass, ncPhoto);
+  });
+  document.querySelectorAll("[data-createacc]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var id = b.getAttribute("data-createacc");
+      var user = document.getElementById("cu-"+id).value.trim();
+      var pass = document.getElementById("cp-"+id).value.trim();
+      if(!user || !pass) return;
+      createAccountForClub(id, user, pass);
+    });
+  });
+  document.querySelectorAll("[data-resetpass]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var id = b.getAttribute("data-resetpass");
+      var pass = document.getElementById("rp-"+id).value.trim();
+      if(!pass) return;
+      resetClubPassword(id, pass);
+    });
+  });
+  document.querySelectorAll("[data-sendalert]").forEach(function(b){ b.addEventListener("click", function(){ sendMembershipAlert(b.getAttribute("data-sendalert")); }); });
+  document.querySelectorAll("[data-clearalert]").forEach(function(b){ b.addEventListener("click", function(){ clearMembershipAlert(b.getAttribute("data-clearalert")); }); });
+  document.querySelectorAll("[data-delclub]").forEach(function(b){ b.addEventListener("click", function(){ deleteClubAction(b.getAttribute("data-delclub")); }); });
+}
+
+function renderClubDashboard(clubId){
+  var club = clubs.find(function(c){ return c.id===clubId; });
+  var clubName = club ? club.name : clubId;
+
+  var myReservas = reservas.filter(function(r){ return r.clubId===clubId; }).sort(function(a,b){
+    var order = { pendiente:0, confirmada:1, rechazada:2 };
+    return (order[a.estado]||0)-(order[b.estado]||0) || (b.createdAt||0)-(a.createdAt||0);
+  });
+  var myTorneos = torneos.filter(function(t){ return t.clubId===clubId; });
+  var myCanchas = canchas.filter(function(c){ return c.clubId===clubId; });
+  var myNoticias = noticias.filter(function(n){ return n.clubId===clubId; });
+
+  function reservaAdminRow(r){
+    var pill = r.estado==="pendiente"
+      ? '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="btn btn-primary" data-confirmres="'+r.id+'">Confirmar</button><button type="button" class="btn btn-danger" data-rejectres="'+r.id+'">Rechazar</button></div>'
+      : '<span class="status-pill '+(RESERVA_STATUS_CLASS[r.estado]||"status-abierto")+'">'+(RESERVA_LABELS[r.estado]||r.estado)+'</span>';
+    return (
+      '<div class="card">'+
+        '<p class="card-place" style="margin-bottom:2px;">'+r.playerName+'</p>'+
+        '<div class="who-tag" style="margin-bottom:12px;">'+r.canchaNombre+' · '+fmtDateSafe(r.fecha)+' · '+r.hora+'</div>'+
+        pill+
+      '</div>'
+    );
+  }
+  function torneoAdminRow(t){
+    var inscriptos = t.inscriptos||[];
+    var inscriptosHtml = inscriptos.length
+      ? inscriptos.map(function(p){ return '<div class="who-tag" style="margin-bottom:3px;">• '+p.name+' ('+p.category+', '+p.side+')</div>'; }).join("")
+      : '<div class="who-tag">Todavía nadie se anotó.</div>';
+    var started = t.rounds && t.rounds.length;
+    var lastRound = started ? t.rounds[t.rounds.length-1] : null;
+    var lastRoundDone = lastRound ? lastRound.every(function(m){ return !!m.winnerId; }) : false;
+    var isFinal = lastRound && lastRound.length===1;
+    var controlsHtml = "";
+    if(!started){
+      controlsHtml = inscriptos.length>=2
+        ? '<button type="button" class="btn btn-primary btn-full" data-gencruces="'+t.id+'" style="margin-top:6px;">Generar cruces</button>'
+        : '<div class="who-tag" style="margin-top:6px;">Hacen falta al menos 2 anotados para generar los cruces.</div>';
+    } else if(t.estado!=="finalizado" && lastRoundDone){
+      controlsHtml = '<button type="button" class="btn btn-primary btn-full" data-nextround="'+t.id+'" style="margin-top:6px;">'+(isFinal?"Finalizar torneo":"Generar próxima ronda")+'</button>';
+    }
+    return (
+      '<div class="card">'+
+        '<p class="card-place" style="margin-bottom:2px;">'+t.nombre+'</p>'+
+        '<div class="who-tag" style="margin-bottom:10px;">'+(t.categoria||"Todas las categorías")+' · '+fmtDateSafe(t.fecha)+(t.cupo?' · cupo '+t.cupo:'')+'</div>'+
+        (started ? "" : '<div class="note-line" style="border-top:none;padding-top:0;margin-bottom:6px;">'+inscriptosHtml+'</div>')+
+        (started ? renderBracketHtml(t) : "")+
+        controlsHtml+
+      '</div>'
+    );
+  }
+  function renderCalendar(){
+    var DAYS_COUNT = 7, START_HOUR = 0, END_HOUR = 24, ROW_PX = 56;
+    var totalMin = (END_HOUR-START_HOUR)*60;
+    var totalPx = (END_HOUR-START_HOUR)*ROW_PX;
+    var dayNames = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+    var days = [];
+    for(var i=0;i<DAYS_COUNT;i++){
+      (function(i){
+        var iso = isoInDays(i);
+        var d = new Date(iso+"T00:00:00");
+        var dayEvents = myReservas.filter(function(r){ return r.fecha===iso; }).map(function(r){
+          var startMin = timeToMin(r.hora);
+          var endMin = startMin+90;
+          var cancha = canchas.find(function(c){ return c.clubId===clubId && c.cancha===r.canchaNombre && c.fecha===r.fecha; });
+          if(cancha && cancha.horaInicio && cancha.horaFin){
+            var ci = timeToMin(cancha.horaInicio), cf = timeToMin(cancha.horaFin);
+            if(cf>ci){ startMin=ci; endMin=cf; }
+          }
+          startMin = Math.max(startMin, START_HOUR*60);
+          endMin = Math.min(Math.max(endMin, startMin+30), END_HOUR*60);
+          return { r:r, startMin:startMin, endMin:endMin };
+        });
+        dayEvents.sort(function(a,b){ return a.startMin-b.startMin; });
+        var lanes = [];
+        dayEvents.forEach(function(ev){
+          var placed=false;
+          for(var li=0; li<lanes.length; li++){
+            if(lanes[li]<=ev.startMin){ ev.lane=li; lanes[li]=ev.endMin; placed=true; break; }
+          }
+          if(!placed){ ev.lane=lanes.length; lanes.push(ev.endMin); }
+        });
+        var laneCount = lanes.length || 1;
+        dayEvents.forEach(function(ev){ ev.laneCount=laneCount; });
+        days.push({ iso:iso, label:dayNames[d.getDay()]+" "+d.getDate(), isToday:i===0, events:dayEvents });
+      })(i);
+    }
+    var timeLabels = "";
+    for(var h=START_HOUR; h<END_HOUR; h++){
+      timeLabels += '<div class="cal-time-label" style="height:'+ROW_PX+'px;">'+pad2(h)+':00</div>';
+    }
+    var headHtml = days.map(function(day){ return '<div class="cal-head'+(day.isToday?" today":"")+'">'+day.label+'</div>'; }).join("");
+    var dayCols = days.map(function(day){
+      var evHtml = day.events.map(function(ev){
+        var top = (ev.startMin-START_HOUR*60)/totalMin*totalPx;
+        var height = Math.max((ev.endMin-ev.startMin)/totalMin*totalPx, 26);
+        var widthPct = 100/ev.laneCount;
+        var leftPct = ev.lane*widthPct;
+        var timeStr = pad2(Math.floor(ev.startMin/60))+':'+pad2(ev.startMin%60)+'–'+pad2(Math.floor(ev.endMin/60))+':'+pad2(ev.endMin%60);
+        return '<div class="cal-event '+ev.r.estado+'" style="top:'+top+'px;height:'+height+'px;left:calc('+leftPct+'% + 2px);width:calc('+widthPct+'% - 4px);">'+
+          '<b>'+ev.r.playerName+'</b>'+
+          '<span class="cal-time">'+timeStr+' · '+ev.r.canchaNombre+'</span>'+
+        '</div>';
+      }).join("");
+      return '<div class="cal-daycol" style="height:'+totalPx+'px;">'+evHtml+'</div>';
+    }).join("");
+    return (
+      '<p class="section-sub">Reservas de los próximos 7 días. Se agregan solas apenas un jugador reserva desde la app, con su nombre y el horario.</p>'+
+      '<div class="cal-wrap" id="cal-wrap"><div class="cal-grid">'+
+        '<div class="cal-head"></div>'+headHtml+
+        '<div class="cal-timecol">'+timeLabels+'</div>'+
+        dayCols+
+      '</div></div>'+
+      '<div class="cal-legend">'+
+        '<span><i style="background:color-mix(in srgb, var(--blue) 25%, var(--surface));border:1px solid var(--blue);"></i>Pendiente</span>'+
+        '<span><i style="background:color-mix(in srgb, var(--success) 25%, var(--surface));border:1px solid var(--success);"></i>Confirmada</span>'+
+        '<span><i style="background:var(--danger-bg);border:1px solid var(--danger);"></i>Rechazada</span>'+
+      '</div>'
+    );
+  }
+  function canchaAdminRow(c){
+    return (
+      '<div class="card" style="display:flex;align-items:center;gap:12px;">'+
+        '<div style="width:36px;height:36px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;"><span style="width:18px;height:18px;display:inline-flex;">'+icons.court+'</span></div>'+
+        '<div style="flex:1;min-width:0;"><div class="who-name">'+c.cancha+'</div><div class="who-tag">'+fmtDateSafe(c.fecha)+' · '+c.horaInicio+'–'+c.horaFin+'</div></div>'+
+        '<button type="button" class="icon-btn" data-delcancha="'+c.id+'" title="Eliminar">'+icons.trash+'</button>'+
+      '</div>'
+    );
+  }
+  function noticiaAdminRow(n){
+    return (
+      '<div class="card">'+
+        '<div class="card-top"><span class="tipo-pill">'+(NEWS_LABELS[n.tipo]||"Novedad")+'</span><button type="button" class="icon-btn" data-delnoticia="'+n.id+'" title="Eliminar">'+icons.trash+'</button></div>'+
+        '<p class="card-place" style="margin-bottom:4px;">'+n.titulo+'</p>'+
+        '<p style="font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0;">'+n.cuerpo+'</p>'+
+      '</div>'
+    );
+  }
+
+  var sectionHtml = "";
+  if(adminSection==="calendario"){
+    sectionHtml = renderCalendar();
+  } else if(adminSection==="reservas"){
+    sectionHtml =
+      '<p class="section-sub">Confirmá o rechazá los pedidos de reserva de los jugadores.</p>'+
+      (myReservas.length ? '<div class="card-grid">'+myReservas.map(reservaAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no llegaron reservas.</p></div>');
+  } else if(adminSection==="torneos"){
+    sectionHtml =
+      '<div class="dash-grid">'+
+        '<div class="panel">'+
+          '<div class="panel-head"><h3>Nuevo torneo</h3></div>'+
+          '<div class="field"><label>Nombre</label><input type="text" id="nt-nombre" placeholder="Ej: Torneo de Verano"></div>'+
+          '<div class="field-row">'+
+            '<div class="field"><label>Categoría</label><input type="text" id="nt-cat" placeholder="Ej: 4ta a 8va"></div>'+
+            '<div class="field"><label>Cupo</label><input type="number" id="nt-cupo" placeholder="Ej: 16"></div>'+
+          '</div>'+
+          '<div class="field"><label>Fecha</label><input type="date" id="nt-fecha" value="'+isoInDays(14)+'"></div>'+
+          '<button type="button" class="btn btn-primary btn-full" id="nt-submit">Crear torneo</button>'+
+        '</div>'+
+        '<div>'+
+          '<p class="subhead">Torneos ('+myTorneos.length+')</p>'+
+          (myTorneos.length ? '<div class="card-grid">'+myTorneos.map(torneoAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no creaste ningún torneo.</p></div>')+
+        '</div>'+
+      '</div>';
+  } else if(adminSection==="canchas"){
+    sectionHtml =
+      '<div class="dash-grid">'+
+        '<div class="panel">'+
+          '<div class="panel-head"><h3>Nueva cancha libre</h3></div>'+
+          '<div class="field"><label>Cancha</label><input type="text" id="nca-nombre" placeholder="Ej: Cancha 3"></div>'+
+          '<div class="field"><label>Fecha</label><input type="date" id="nca-fecha" value="'+isoInDays(0)+'"></div>'+
+          '<div class="field-row">'+
+            '<div class="field"><label>Desde</label><input type="time" id="nca-inicio" value="19:00"></div>'+
+            '<div class="field"><label>Hasta</label><input type="time" id="nca-fin" value="20:30"></div>'+
+          '</div>'+
+          '<button type="button" class="btn btn-primary btn-full" id="nca-submit">Publicar cancha</button>'+
+        '</div>'+
+        '<div>'+
+          '<p class="subhead">Canchas publicadas ('+myCanchas.length+')</p>'+
+          (myCanchas.length ? '<div class="card-grid">'+myCanchas.map(canchaAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no publicaste ninguna cancha.</p></div>')+
+        '</div>'+
+      '</div>';
+  } else {
+    sectionHtml =
+      '<div class="dash-grid">'+
+        '<div class="panel">'+
+          '<div class="panel-head"><h3>Nueva noticia</h3></div>'+
+          '<div class="field"><label>Tipo</label><select id="nn-tipo"><option value="general">Novedad</option><option value="descuento">Descuento</option><option value="torneo">Torneo</option></select></div>'+
+          '<div class="field"><label>Título</label><input type="text" id="nn-titulo" placeholder="Ej: Torneo de Verano"></div>'+
+          '<div class="field"><label>Texto</label><textarea id="nn-cuerpo" placeholder="Contá los detalles..."></textarea></div>'+
+          '<button type="button" class="btn btn-primary btn-full" id="nn-submit">Publicar noticia</button>'+
+        '</div>'+
+        '<div>'+
+          '<p class="subhead">Noticias publicadas ('+myNoticias.length+')</p>'+
+          (myNoticias.length ? '<div class="card-grid">'+myNoticias.map(noticiaAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no publicaste ninguna noticia.</p></div>')+
+        '</div>'+
+      '</div>';
+  }
+
+  rootEl.innerHTML =
+    '<div class="shell">'+
+      '<div class="topbar">'+
+        '<div class="brand">'+(club&&club.photo?'<img src="'+club.photo+'" style="width:38px;height:38px;border-radius:11px;object-fit:cover;flex-shrink:0;">':'<div class="mark">'+icons.club+'</div>')+'<div><div class="name">'+clubName+verifiedBadge()+'</div><div class="tag">Panel del club</div></div></div>'+
+        '<div class="topbar-actions">'+
+          '<a href="/" class="text-link">Ver app de jugadores</a>'+
+          '<button class="icon-btn" id="cd-logout" title="Cerrar sesión">'+icons.logout+'</button>'+
+        '</div>'+
+      '</div>'+
+      (club && club.membershipAlert ? '<div style="padding:22px 32px 0;"><div class="local-banner" style="margin-bottom:0;">Te quedan 2 días de membresía. Hablá con el administrador y renová.</div></div>' : '')+
+      toastWrap()+
+      '<div class="content">'+
+        '<div class="chiprow">'+
+          ["calendario","reservas","torneos","canchas","noticias"].map(function(s){
+            var labels = { calendario:"Calendario", reservas:"Reservas", torneos:"Torneos", canchas:"Canchas", noticias:"Noticias" };
+            return '<button type="button" class="chip'+(adminSection===s?" active":"")+'" data-sec="'+s+'">'+labels[s]+'</button>';
+          }).join("")+
+        '</div>'+
+        sectionHtml+
+      '</div>'+
+    '</div>';
+
+  var calWrap = document.getElementById("cal-wrap");
+  if(calWrap) calWrap.scrollTop = 8*56 - 20;
+  document.getElementById("cd-logout").addEventListener("click", logout);
+  document.querySelectorAll("[data-sec]").forEach(function(b){ b.addEventListener("click", function(){ adminSection=b.getAttribute("data-sec"); render(); }); });
+  document.querySelectorAll("[data-confirmres]").forEach(function(b){ b.addEventListener("click", function(){ confirmReservaAction(b.getAttribute("data-confirmres")); }); });
+  document.querySelectorAll("[data-rejectres]").forEach(function(b){ b.addEventListener("click", function(){ rejectReservaAction(b.getAttribute("data-rejectres")); }); });
+  document.querySelectorAll("[data-delcancha]").forEach(function(b){ b.addEventListener("click", function(){ adminDeleteCancha(b.getAttribute("data-delcancha")); }); });
+  document.querySelectorAll("[data-delnoticia]").forEach(function(b){ b.addEventListener("click", function(){ adminDeleteNoticia(b.getAttribute("data-delnoticia")); }); });
+  document.querySelectorAll("[data-gencruces]").forEach(function(b){ b.addEventListener("click", function(){ generateCrucesAction(b.getAttribute("data-gencruces")); }); });
+  document.querySelectorAll("[data-nextround]").forEach(function(b){ b.addEventListener("click", function(){ generateNextRoundAction(b.getAttribute("data-nextround")); }); });
+  document.querySelectorAll("[data-savematch]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var parts = b.getAttribute("data-savematch").split("|");
+      var tId=parts[0], ri=parseInt(parts[1],10), mi=parseInt(parts[2],10);
+      var fecha = document.getElementById("mf-"+tId+"-"+ri+"-"+mi).value;
+      var hora = document.getElementById("mh-"+tId+"-"+ri+"-"+mi).value;
+      var cancha = document.getElementById("mc-"+tId+"-"+ri+"-"+mi).value.trim();
+      setMatchScheduleAction(tId, ri, mi, fecha, hora, cancha);
+    });
+  });
+  document.querySelectorAll("[data-winmatch]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var parts = b.getAttribute("data-winmatch").split("|");
+      setMatchWinnerAction(parts[0], parseInt(parts[1],10), parseInt(parts[2],10), parts[3]);
+    });
+  });
+
+  var ntSubmit = document.getElementById("nt-submit");
+  if(ntSubmit) ntSubmit.addEventListener("click", function(){
+    var nombre = document.getElementById("nt-nombre").value.trim();
+    if(!nombre) return;
+    var cupo = parseInt(document.getElementById("nt-cupo").value, 10);
+    adminCreateTorneo({ nombre:nombre, categoria:document.getElementById("nt-cat").value.trim(), fecha:document.getElementById("nt-fecha").value, cupo: isNaN(cupo)?null:cupo });
+  });
+  var ncaSubmit = document.getElementById("nca-submit");
+  if(ncaSubmit) ncaSubmit.addEventListener("click", function(){
+    var nombre = document.getElementById("nca-nombre").value.trim();
+    if(!nombre) return;
+    adminCreateCancha({ cancha:nombre, fecha:document.getElementById("nca-fecha").value, horaInicio:document.getElementById("nca-inicio").value, horaFin:document.getElementById("nca-fin").value });
+  });
+  var nnSubmit = document.getElementById("nn-submit");
+  if(nnSubmit) nnSubmit.addEventListener("click", function(){
+    var titulo = document.getElementById("nn-titulo").value.trim();
+    var cuerpo = document.getElementById("nn-cuerpo").value.trim();
+    if(!titulo || !cuerpo) return;
+    adminCreateNoticia({ tipo:document.getElementById("nn-tipo").value, titulo:titulo, cuerpo:cuerpo, fecha:isoInDays(0) });
+  });
+}
+
+checkSession();
+})();
+</script>
+</body>
+</html>
