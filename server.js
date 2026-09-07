@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
+const webpush = require("web-push");
 const { db, uid, ready } = require("./db");
 
 const app = express();
@@ -40,6 +41,35 @@ function asyncRoute(fn) {
       if (!res.headersSent) res.status(500).json({ error: "Error del servidor." });
     });
   };
+}
+
+/* ---------------- notificaciones push ---------------- */
+let VAPID_PUBLIC_KEY = "";
+
+async function ensureVapidKeys() {
+  const pub = await getRow("SELECT value FROM settings WHERE key='vapidPublicKey'");
+  const priv = await getRow("SELECT value FROM settings WHERE key='vapidPrivateKey'");
+  if (pub && priv) return { publicKey: pub.value, privateKey: priv.value };
+  const keys = webpush.generateVAPIDKeys();
+  await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('vapidPublicKey', ?)", [keys.publicKey]);
+  await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('vapidPrivateKey', ?)", [keys.privateKey]);
+  return keys;
+}
+
+async function sendPushToPlayer(playerId, payload) {
+  if (!playerId || !VAPID_PUBLIC_KEY) return;
+  const subs = await getAll("SELECT * FROM pushSubscriptions WHERE playerId=?", [playerId]);
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: JSON.parse(s.keys) }, JSON.stringify(payload));
+    } catch (err) {
+      if (err && (err.statusCode === 410 || err.statusCode === 404)) {
+        await run("DELETE FROM pushSubscriptions WHERE id=?", [s.id]).catch(() => {});
+      } else {
+        console.error("Error enviando push:", err && err.message);
+      }
+    }
+  }
 }
 
 /* ---------------- helpers ---------------- */
@@ -250,6 +280,7 @@ app.post("/api/requests/:id/join", asyncRoute(async (req, res) => {
     [uid(), r.creatorId, "join", r.id, player.name, r.lugar, r.fecha, r.hora, Date.now()]
   );
   res.json({ estado, participantes });
+  sendPushToPlayer(r.creatorId, { title: "¡Se unieron a tu partido!", body: player.name + " se sumó en " + r.lugar, url: "/" }).catch(() => {});
 }));
 
 /* ---------------- activity (avisos del jugador) ---------------- */
@@ -273,7 +304,7 @@ app.post("/api/activity", asyncRoute(async (req, res) => {
 
 /* ---------------- canchas (lectura publica) ---------------- */
 app.get("/api/canchas", asyncRoute(async (req, res) => {
-  res.json(await getAll("SELECT * FROM canchas ORDER BY fecha ASC LIMIT 300"));
+  res.json(await getAll("SELECT * FROM canchas ORDER BY cancha ASC LIMIT 300"));
 }));
 
 /* ---------------- noticias (lectura publica) ---------------- */
@@ -359,11 +390,38 @@ app.post("/api/messages", asyncRoute(async (req, res) => {
   const d = req.body || {};
   if (!d.requestId || !d.senderId || !d.text || !d.text.trim()) return res.status(400).json({ error: "Faltan datos." });
   const id = uid();
+  const text = String(d.text).slice(0, 2000);
   await run(
     "INSERT INTO messages (id, requestId, senderId, senderName, text, timestamp) VALUES (?,?,?,?,?,?)",
-    [id, d.requestId, d.senderId, d.senderName || "", String(d.text).slice(0, 2000), Date.now()]
+    [id, d.requestId, d.senderId, d.senderName || "", text, Date.now()]
   );
   res.json({ id });
+
+  const reqRow = await getRow("SELECT * FROM requests WHERE id=?", [d.requestId]);
+  if (reqRow) {
+    const participantes = JSON.parse(reqRow.participantes || "[]");
+    const recipients = new Set();
+    if (reqRow.creatorId && reqRow.creatorId !== d.senderId) recipients.add(reqRow.creatorId);
+    participantes.forEach((p) => { if (p.id !== d.senderId) recipients.add(p.id); });
+    recipients.forEach((pid) => {
+      sendPushToPlayer(pid, { title: d.senderName || "Nuevo mensaje", body: text, url: "/" }).catch(() => {});
+    });
+  }
+}));
+
+/* ---------------- notificaciones push ---------------- */
+app.get("/api/push/vapid-public-key", (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+app.post("/api/push/subscribe", asyncRoute(async (req, res) => {
+  const { playerId, subscription } = req.body || {};
+  if (!playerId || !subscription || !subscription.endpoint) return res.status(400).json({ error: "Faltan datos." });
+  await run(
+    `INSERT INTO pushSubscriptions (id, playerId, endpoint, keys, createdAt) VALUES (?,?,?,?,?)
+     ON CONFLICT(endpoint) DO UPDATE SET playerId=excluded.playerId, keys=excluded.keys`,
+    [uid(), playerId, subscription.endpoint, JSON.stringify(subscription.keys || {}), Date.now()]
+  );
+  res.json({ ok: true });
 }));
 
 /* ---------------- club-owner authenticated routes ---------------- */
@@ -374,9 +432,9 @@ app.post("/api/my/canchas", clubAuth, asyncRoute(async (req, res) => {
   const club = await getRow("SELECT * FROM clubs WHERE id=?", [req.session.clubId]);
   const id = uid();
   await run(
-    `INSERT INTO canchas (id, clubId, club, cancha, zona, fecha, horaInicio, horaFin, updatedAt)
-     VALUES (?,?,?,?,?,?,?,?,?)`,
-    [id, req.session.clubId, club ? club.name : req.session.clubId, d.cancha || "", d.zona || (club ? club.zona : ""), d.fecha || "", d.horaInicio || "", d.horaFin || "", Date.now()]
+    `INSERT INTO canchas (id, clubId, club, cancha, zona, horaApertura, horaCierre, updatedAt)
+     VALUES (?,?,?,?,?,?,?,?)`,
+    [id, req.session.clubId, club ? club.name : req.session.clubId, d.cancha || "", d.zona || (club ? club.zona : ""), d.horaApertura || "", d.horaCierre || "", Date.now()]
   );
   res.json({ id });
 }));
@@ -442,6 +500,11 @@ app.patch("/api/my/reservas/:id", clubAuth, asyncRoute(async (req, res) => {
     [uid(), r.playerId, "reserva", null, club ? club.name : r.clubName, r.canchaNombre, r.fecha, r.hora, estado, Date.now()]
   );
   res.json({ ok: true });
+  sendPushToPlayer(r.playerId, {
+    title: estado === "confirmada" ? "¡Reserva confirmada!" : "Reserva rechazada",
+    body: (club ? club.name : r.clubName) + " · " + r.canchaNombre + " · " + r.fecha + " " + r.hora,
+    url: "/",
+  }).catch(() => {});
 }));
 
 /* ---------------- superadmin authenticated routes ---------------- */
@@ -520,7 +583,10 @@ app.patch("/api/admin/clubs/:id/account", superAuth, asyncRoute(async (req, res)
 }));
 
 ready
-  .then(() => {
+  .then(() => ensureVapidKeys())
+  .then((keys) => {
+    VAPID_PUBLIC_KEY = keys.publicKey;
+    webpush.setVapidDetails("mailto:soporte@bandeja.app", keys.publicKey, keys.privateKey);
     app.listen(PORT, () => {
       console.log("Bandeja backend escuchando en el puerto " + PORT);
     });

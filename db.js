@@ -80,9 +80,8 @@ CREATE TABLE IF NOT EXISTS canchas (
   club TEXT,
   cancha TEXT,
   zona TEXT,
-  fecha TEXT,
-  horaInicio TEXT,
-  horaFin TEXT,
+  horaApertura TEXT,
+  horaCierre TEXT,
   updatedAt INTEGER
 );
 
@@ -167,7 +166,21 @@ CREATE TABLE IF NOT EXISTS sessions (
   expiresAt INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pushSubscriptions (
+  id TEXT PRIMARY KEY,
+  playerId TEXT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  keys TEXT NOT NULL,
+  createdAt INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_request ON messages(requestId);
+CREATE INDEX IF NOT EXISTS idx_push_player ON pushSubscriptions(playerId);
 `;
 
 // Migraciones idempotentes para bases creadas antes de sumar estas columnas.
@@ -175,6 +188,8 @@ const MIGRATIONS = [
   "ALTER TABLE clubs ADD COLUMN photo TEXT",
   "ALTER TABLE torneos ADD COLUMN rounds TEXT DEFAULT '[]'",
   "ALTER TABLE torneos ADD COLUMN campeon TEXT",
+  "ALTER TABLE canchas ADD COLUMN horaApertura TEXT",
+  "ALTER TABLE canchas ADD COLUMN horaCierre TEXT",
 ];
 
 async function migrate() {
@@ -207,9 +222,9 @@ async function seedIfEmpty() {
     { sql: "INSERT INTO clubAccounts (clubId, username, passwordHash, createdAt) VALUES (?,?,?,?)", args: ["set-point-padel", "setpoint", bcrypt.hashSync("padel123", 10), now] },
     { sql: "INSERT INTO clubAccounts (clubId, username, passwordHash, createdAt) VALUES (?,?,?,?)", args: ["la-bandeja-club", "labandeja", bcrypt.hashSync("padel123", 10), now] },
 
-    { sql: "INSERT INTO canchas (id, clubId, club, cancha, zona, fecha, horaInicio, horaFin, updatedAt) VALUES (?,?,?,?,?,?,?,?,?)", args: [uid(), "padel-norte", "Padel Norte", "Cancha 2", "Núñez", isoInDays(0), "20:00", "21:30", now] },
-    { sql: "INSERT INTO canchas (id, clubId, club, cancha, zona, fecha, horaInicio, horaFin, updatedAt) VALUES (?,?,?,?,?,?,?,?,?)", args: [uid(), "set-point-padel", "Set Point Pádel", "Cancha 4", "Vicente López", isoInDays(0), "21:30", "23:00", now] },
-    { sql: "INSERT INTO canchas (id, clubId, club, cancha, zona, fecha, horaInicio, horaFin, updatedAt) VALUES (?,?,?,?,?,?,?,?,?)", args: [uid(), "la-bandeja-club", "La Bandeja Club", "Cancha 1", "Belgrano", isoInDays(1), "19:00", "20:30", now] },
+    { sql: "INSERT INTO canchas (id, clubId, club, cancha, zona, horaApertura, horaCierre, updatedAt) VALUES (?,?,?,?,?,?,?,?)", args: [uid(), "padel-norte", "Padel Norte", "Cancha 2", "Núñez", "09:00", "23:00", now] },
+    { sql: "INSERT INTO canchas (id, clubId, club, cancha, zona, horaApertura, horaCierre, updatedAt) VALUES (?,?,?,?,?,?,?,?)", args: [uid(), "set-point-padel", "Set Point Pádel", "Cancha 4", "Vicente López", "10:00", "23:30", now] },
+    { sql: "INSERT INTO canchas (id, clubId, club, cancha, zona, horaApertura, horaCierre, updatedAt) VALUES (?,?,?,?,?,?,?,?)", args: [uid(), "la-bandeja-club", "La Bandeja Club", "Cancha 1", "Belgrano", "08:00", "22:00", now] },
 
     { sql: "INSERT INTO noticias (id, clubId, club, tipo, titulo, cuerpo, fecha, updatedAt) VALUES (?,?,?,?,?,?,?,?)", args: [uid(), "padel-norte", "Padel Norte", "torneo", "Torneo de Primavera - 4ta a 8va", "Inscribite antes del 20/9 en recepción. Cupos limitados por categoría.", isoInDays(0), now] },
     { sql: "INSERT INTO noticias (id, clubId, club, tipo, titulo, cuerpo, fecha, updatedAt) VALUES (?,?,?,?,?,?,?,?)", args: [uid(), "set-point-padel", "Set Point Pádel", "descuento", "20% off en alquiler los martes", "Válido de 14 a 18hs durante todo septiembre, presentando la app en recepción.", isoInDays(-1), now] },

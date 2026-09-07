@@ -759,6 +759,40 @@ function fetchJSON(url, opts){
     });
   });
 }
+/* ---------------- notificaciones push ---------------- */
+function urlBase64ToUint8Array(base64String){
+  var padding = "=".repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for(var i=0; i<rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+function pushSupported(){ return "serviceWorker" in navigator && "PushManager" in window && typeof Notification!=="undefined"; }
+function pushEnabled(){ return localStorage.getItem("bandeja_push_enabled")==="1"; }
+function enablePushNotifications(){
+  var prof = profile();
+  if(!prof) return;
+  if(!pushSupported()){ toast("Tu navegador no soporta notificaciones push."); return; }
+  Notification.requestPermission().then(function(perm){
+    if(perm!=="granted"){ toast("No activaste el permiso de notificaciones."); return; }
+    var publicKey;
+    navigator.serviceWorker.register("/sw.js")
+      .then(function(){ return fetchJSON("/api/push/vapid-public-key"); })
+      .then(function(data){ publicKey = data.publicKey; return navigator.serviceWorker.ready; })
+      .then(function(reg){ return reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(publicKey) }); })
+      .then(function(sub){ return fetchJSON("/api/push/subscribe", { method:"POST", body: JSON.stringify({ playerId: prof.id, subscription: sub.toJSON() }) }); })
+      .then(function(){
+        localStorage.setItem("bandeja_push_enabled","1");
+        toast("Notificaciones activadas.");
+        render();
+      })
+      .catch(function(err){
+        console.error(err);
+        toast("No se pudieron activar las notificaciones.");
+      });
+  });
+}
 function apiSubscribe(url, cb, intervalMs){
   var stopped = false;
   function tick(){
@@ -799,6 +833,34 @@ function makeApiStore(){
 }
 
 function isoInDays(n){ var d=new Date(Date.now()+n*86400000); return d.toISOString().slice(0,10); }
+function pad2(n){ return n<10 ? "0"+n : ""+n; }
+function timeToMin(t){ var p=String(t||"00:00").split(":"); return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); }
+var slotIndex = {};
+function freeSlots(canchaProfiles, reservasList, clubIdFilter){
+  var SLOT_MIN = 90, DAYS = 7;
+  var out = [];
+  var profiles = clubIdFilter ? canchaProfiles.filter(function(c){ return c.clubId===clubIdFilter; }) : canchaProfiles;
+  profiles.forEach(function(c){
+    var openMin = timeToMin(c.horaApertura), closeMin = timeToMin(c.horaCierre);
+    if(!c.horaApertura || !c.horaCierre || closeMin<=openMin) return;
+    for(var d=0; d<DAYS; d++){
+      var fecha = isoInDays(d);
+      for(var start=openMin; start+SLOT_MIN<=closeMin; start+=SLOT_MIN){
+        var end = start+SLOT_MIN;
+        var horaInicio = pad2(Math.floor(start/60))+":"+pad2(start%60);
+        var horaFin = pad2(Math.floor(end/60))+":"+pad2(end%60);
+        var taken = reservasList.some(function(r){
+          return r.clubId===c.clubId && r.canchaNombre===c.cancha && r.fecha===fecha && r.hora===horaInicio && r.estado!=="rechazada";
+        });
+        if(taken) continue;
+        var slot = { id: c.id+"|"+fecha+"|"+horaInicio, clubId:c.clubId, club:c.club, cancha:c.cancha, zona:c.zona, fecha:fecha, horaInicio:horaInicio, horaFin:horaFin };
+        slotIndex[slot.id] = slot;
+        out.push(slot);
+      }
+    }
+  });
+  return out;
+}
 function fmtDateSafe(iso){
   if(!iso) return "";
   var d = new Date(iso+"T00:00:00");
@@ -1138,10 +1200,10 @@ function joinTorneoAction(id){
     .then(function(){ toast("¡Te anotaste al torneo!"); render(); })
     .catch(function(err){ toast(err.status===409 ? "Ese torneo ya no tiene cupo." : (err.message||"No se pudo anotar.")); });
 }
-function reserveCanchaAction(canchaId){
+function reserveCanchaAction(slotId){
   var prof = profile();
   if(!prof || !store) return;
-  var c = canchas.find(function(x){ return x.id===canchaId; });
+  var c = slotIndex[slotId];
   if(!c) return;
   store.createReserva({
     clubId: c.clubId||null, clubName: c.club, canchaNombre: c.cancha, fecha: c.fecha, hora: c.horaInicio,
@@ -1279,12 +1341,12 @@ function renderBuscar(prof){
   var listHtml = open.length ? open.map(function(r){ return requestCard(r, prof); }).join("") :
     '<div class="empty">'+icons.ball+'<p>No hay partidos abiertos'+(filterMine?" para tu perfil":"")+' todavía.<br>Sé el primero en publicar uno.</p></div>';
 
-  var sortedCanchas = canchas.slice().sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
+  var sortedCanchas = freeSlots(canchas, reservas).sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
   var canchasHtml = showForm ? "" :
     '<p class="subhead">Canchas libres</p>'+
-    '<p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px;">Cargadas por los clubes desde su panel de administración. Tocá el nombre para ver el club, o "Reservar" para mandar la solicitud directo.</p>'+
+    '<p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 0 12px;">Calculadas solas a partir del horario de cada club, descontando lo ya reservado. Tocá el nombre para ver el club, o "Reservar" para mandar la solicitud directo.</p>'+
     (sortedCanchas.length ? sortedCanchas.map(function(c){ return canchaRowHtml(c, '<button type="button" class="btn btn-primary" data-reservecancha="'+c.id+'">Reservar</button>'); }).join("") :
-      '<div class="empty" style="padding:20px 10px;"><p>Ningún club cargó canchas libres todavía.</p></div>');
+      '<div class="empty" style="padding:20px 10px;"><p>Ningún club cargó horarios de cancha todavía.</p></div>');
 
   var sortedNoticias = noticias.slice().sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
   var noticiasHtml = showForm ? "" :
@@ -1396,12 +1458,20 @@ function renderPerfilView(prof){
     '<p class="subhead">Tus amigos ('+myFriends.length+')</p>'+
     (myFriends.length ? myFriends.map(friendCardHtml).join("") :
       '<div class="empty" style="padding:24px 10px;">'+icons.friends+'<p>Todavía no agregaste amigos.<br>Andá a la pestaña Amigos para buscarlos.</p></div>')+
+    '<p class="subhead">Notificaciones</p>'+
+    (pushEnabled()
+      ? '<div class="profile-card" style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Tenés las notificaciones activadas en este dispositivo — te vamos a avisar cuando alguien se una a tu partido, te confirmen una reserva o te escriban en el chat.</div>'
+      : (pushSupported()
+          ? '<button type="button" class="btn btn-primary btn-full" id="p-push" style="padding:12px;"><span class="icon-inline">'+icons.bell+'</span> Activar notificaciones en este dispositivo</button>'
+          : '<div class="profile-card" style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">Este navegador no soporta notificaciones push.</div>'))+
     '<p class="subhead">Modo prueba</p>'+
     '<div class="profile-card" style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">'+
       'Usá el selector "Vos / Compañero de prueba" arriba a la derecha para simular a otro jugador en este mismo navegador y ver cómo le llega tu búsqueda como alerta, o abrí este mismo enlace desde otro dispositivo.'+
     '</div>';
 
   document.getElementById("p-edit").addEventListener("click", function(){ editingProfile=true; render(); });
+  var pPush = document.getElementById("p-push");
+  if(pPush) pPush.addEventListener("click", enablePushNotifications);
   bindShared(prof);
 }
 
@@ -1555,7 +1625,7 @@ function renderClubView(prof, clubId){
     el.innerHTML = '<div class="empty">'+icons.club+'<p>No pudimos cargar este club.</p></div>';
   } else {
     var following = prof && isClubFollowed(prof.id, clubId);
-    var myCanchas = canchas.filter(function(c){ return c.clubId===clubId; });
+    var myCanchas = freeSlots(canchas, reservas, clubId).sort(function(a,b){ return (a.fecha+a.horaInicio).localeCompare(b.fecha+b.horaInicio); });
     var myTorneos = torneos.filter(function(t){ return t.clubId===clubId; });
     var myNoticias = noticias.filter(function(n){ return n.clubId===clubId; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
     var myReservas = prof ? reservas.filter(function(r){ return r.clubId===clubId && r.playerId===prof.id; }) : [];

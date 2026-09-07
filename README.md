@@ -14,6 +14,7 @@ bandeja-app/
   public/
     index.html    -> la app de jugadores
     admin.html    -> la web de administradores y clubes (página aparte)
+    sw.js         -> service worker (notificaciones push del navegador)
   package.json
 ```
 
@@ -140,3 +141,12 @@ la primera carga.
   5GB y varios millones de lecturas/escrituras por mes, más que suficiente
   para este uso. Si en algún momento hace falta más, se puede pasar a un
   plan pago de Turso sin cambiar código.
+- **Notificaciones push (que suenan/vibran en el celular):** avisan cuando
+  alguien se une a tu partido, cuando el club confirma o rechaza tu reserva,
+  y cuando te llega un mensaje de chat. No hace falta configurar nada — el
+  servidor genera sus propias claves la primera vez que arranca y las guarda
+  en la base de datos. Cada jugador tiene que tocar una vez el botón
+  "Activar notificaciones" en su Perfil, y aceptar el permiso que le pide el
+  navegador. Funciona en Chrome/Edge en Android y en computadora; en iPhone
+  requiere que el jugador agregue la app a la pantalla de inicio primero
+  (Safari no permite notificaciones push en una pestaña normal).

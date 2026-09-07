@@ -689,11 +689,6 @@ function renderClubDashboard(clubId){
         var dayEvents = myReservas.filter(function(r){ return r.fecha===iso; }).map(function(r){
           var startMin = timeToMin(r.hora);
           var endMin = startMin+90;
-          var cancha = canchas.find(function(c){ return c.clubId===clubId && c.cancha===r.canchaNombre && c.fecha===r.fecha; });
-          if(cancha && cancha.horaInicio && cancha.horaFin){
-            var ci = timeToMin(cancha.horaInicio), cf = timeToMin(cancha.horaFin);
-            if(cf>ci){ startMin=ci; endMin=cf; }
-          }
           startMin = Math.max(startMin, START_HOUR*60);
           endMin = Math.min(Math.max(endMin, startMin+30), END_HOUR*60);
           return { r:r, startMin:startMin, endMin:endMin };
@@ -749,7 +744,7 @@ function renderClubDashboard(clubId){
     return (
       '<div class="card" style="display:flex;align-items:center;gap:12px;">'+
         '<div style="width:36px;height:36px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;"><span style="width:18px;height:18px;display:inline-flex;">'+icons.court+'</span></div>'+
-        '<div style="flex:1;min-width:0;"><div class="who-name">'+c.cancha+'</div><div class="who-tag">'+fmtDateSafe(c.fecha)+' · '+c.horaInicio+'–'+c.horaFin+'</div></div>'+
+        '<div style="flex:1;min-width:0;"><div class="who-name">'+c.cancha+'</div><div class="who-tag">Abre '+c.horaApertura+' · Cierra '+c.horaCierre+'</div></div>'+
         '<button type="button" class="icon-btn" data-delcancha="'+c.id+'" title="Eliminar">'+icons.trash+'</button>'+
       '</div>'
     );
@@ -791,20 +786,20 @@ function renderClubDashboard(clubId){
       '</div>';
   } else if(adminSection==="canchas"){
     sectionHtml =
+      '<p class="section-sub">Cargá cada cancha una sola vez con su horario de apertura y cierre. El sistema arma solo los turnos de 1.5hs libres, descontando lo ya reservado.</p>'+
       '<div class="dash-grid">'+
         '<div class="panel">'+
-          '<div class="panel-head"><h3>Nueva cancha libre</h3></div>'+
+          '<div class="panel-head"><h3>Nueva cancha</h3></div>'+
           '<div class="field"><label>Cancha</label><input type="text" id="nca-nombre" placeholder="Ej: Cancha 3"></div>'+
-          '<div class="field"><label>Fecha</label><input type="date" id="nca-fecha" value="'+isoInDays(0)+'"></div>'+
           '<div class="field-row">'+
-            '<div class="field"><label>Desde</label><input type="time" id="nca-inicio" value="19:00"></div>'+
-            '<div class="field"><label>Hasta</label><input type="time" id="nca-fin" value="20:30"></div>'+
+            '<div class="field"><label>Abre</label><input type="time" id="nca-inicio" value="09:00"></div>'+
+            '<div class="field"><label>Cierra</label><input type="time" id="nca-fin" value="23:00"></div>'+
           '</div>'+
-          '<button type="button" class="btn btn-primary btn-full" id="nca-submit">Publicar cancha</button>'+
+          '<button type="button" class="btn btn-primary btn-full" id="nca-submit">Agregar cancha</button>'+
         '</div>'+
         '<div>'+
-          '<p class="subhead">Canchas publicadas ('+myCanchas.length+')</p>'+
-          (myCanchas.length ? '<div class="card-grid">'+myCanchas.map(canchaAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no publicaste ninguna cancha.</p></div>')+
+          '<p class="subhead">Canchas cargadas ('+myCanchas.length+')</p>'+
+          (myCanchas.length ? '<div class="card-grid">'+myCanchas.map(canchaAdminRow).join("")+'</div>' : '<div class="empty"><p>Todavía no cargaste ninguna cancha.</p></div>')+
         '</div>'+
       '</div>';
   } else {
@@ -884,7 +879,7 @@ function renderClubDashboard(clubId){
   if(ncaSubmit) ncaSubmit.addEventListener("click", function(){
     var nombre = document.getElementById("nca-nombre").value.trim();
     if(!nombre) return;
-    adminCreateCancha({ cancha:nombre, fecha:document.getElementById("nca-fecha").value, horaInicio:document.getElementById("nca-inicio").value, horaFin:document.getElementById("nca-fin").value });
+    adminCreateCancha({ cancha:nombre, horaApertura:document.getElementById("nca-inicio").value, horaCierre:document.getElementById("nca-fin").value });
   });
   var nnSubmit = document.getElementById("nn-submit");
   if(nnSubmit) nnSubmit.addEventListener("click", function(){
